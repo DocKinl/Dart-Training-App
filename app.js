@@ -9,8 +9,6 @@ let outMode = 'double';
 let isCheckoutHelperActive = true;
 
 // Match-Struktur Variablen
-let matchType = 'legs'; 
-let matchTarget = 5; 
 let scores = { 1: 501, 2: 501 };
 let legs = { 1: 0, 2: 0 };
 let sets = { 1: 0, 2: 0 };
@@ -80,6 +78,7 @@ function safeInit() {
     populateSodTargets();
     initEventListeners();
     initVoices();
+    initSliderLabels(); // Initialisiert Anzeigetexte der Regler beim Laden
 }
 
 if (document.readyState === 'loading') {
@@ -148,6 +147,19 @@ function initVoices() {
     });
 }
 
+function initSliderLabels() {
+    const lSlider = document.getElementById('input-legs-slider');
+    if (lSlider) {
+        let val = parseInt(lSlider.value);
+        document.getElementById('legs-slider-label').innerText = `Legs pro Set: Best of ${val} (First to ${Math.ceil(val / 2)})`;
+    }
+    const sSlider = document.getElementById('input-sets-slider');
+    if (sSlider) {
+        let val = parseInt(sSlider.value);
+        document.getElementById('sets-slider-label').innerText = `Sets zum Matchgewinn: Best of ${val} (First to ${Math.ceil(val / 2)})`;
+    }
+}
+
 function initEventListeners() {
     document.querySelectorAll('.btn-settings-open').forEach(btn => {
         btn.onclick = () => { document.getElementById('settings-modal').classList.remove('hidden'); };
@@ -191,40 +203,14 @@ function initEventListeners() {
         if(val === 'bot') document.getElementById('options-bot').classList.remove('hidden');
         else document.getElementById('options-bot').classList.add('hidden');
     });
-    
-    // Config Schieberegler Ein- und Ausblendung
-    setupGroupListeners('group-match-type', (val, btn) => {
-        selectOption('group-match-type', btn);
-        matchType = val;
-        
-        const legsWrapper = document.getElementById('wrapper-legs-slider');
-        const setsWrapper = document.getElementById('wrapper-sets-slider');
-        const legsLabel = document.getElementById('legs-slider-label');
-        
-        if (val === 'sets') {
-            legsWrapper.classList.remove('hidden');
-            setsWrapper.classList.remove('hidden');
-            let valLegs = parseInt(document.getElementById('input-legs-slider').value);
-            legsLabel.innerText = `Legs pro Set: Best of ${valLegs} (First to ${Math.ceil(valLegs / 2)})`;
-        } else {
-            legsWrapper.classList.remove('hidden');
-            setsWrapper.classList.add('hidden');
-            let valLegs = parseInt(document.getElementById('input-legs-slider').value);
-            legsLabel.innerText = `Legs zum Matchsieg: Best of ${valLegs} (First to ${Math.ceil(valLegs / 2)})`;
-        }
-    });
 
-    // Slider oninput Handler
+    // Slider Live-Updates
     const legsSlider = document.getElementById('input-legs-slider');
     if (legsSlider) {
         legsSlider.oninput = function() {
             let val = parseInt(this.value);
             let firstTo = Math.ceil(val / 2);
-            if (matchType === 'sets') {
-                document.getElementById('legs-slider-label').innerText = `Legs pro Set: Best of ${val} (First to ${firstTo})`;
-            } else {
-                document.getElementById('legs-slider-label').innerText = `Legs zum Matchsieg: Best of ${val} (First to ${firstTo})`;
-            }
+            document.getElementById('legs-slider-label').innerText = `Legs pro Set: Best of ${val} (First to ${firstTo})`;
         };
     }
 
@@ -473,7 +459,6 @@ function startGame() {
     isBotMatch = opponentType === "bot";
     botLevel = getSelectedValue('group-bot-level');
     inputMode = (activeGlobalMode === 'x01') ? getSelectedValue('group-input-mode') : 'segment';
-    matchType = getSelectedValue('group-match-type');
 
     document.getElementById('set-input-container').classList.add('hidden');
     document.getElementById('segment-input-container').classList.add('hidden');
@@ -495,19 +480,14 @@ function startGame() {
         initialPoints = parseInt(getSelectedValue('group-points'));
         scores[1] = initialPoints; scores[2] = initialPoints;
 
-        // Slider-Distanz-Parsing ausführen
+        // Auslesen der Schieberegler
         let legsValue = parseInt(document.getElementById('input-legs-slider').value);
+        let setsValue = parseInt(document.getElementById('input-sets-slider').value);
+        
         window.legsRequiredForSet = Math.ceil(legsValue / 2);
+        window.setsRequiredForMatch = Math.ceil(setsValue / 2);
 
-        if (matchType === 'legs') {
-            matchTarget = legsValue;
-            document.getElementById('game-title').innerText = `${initialPoints}er Match (Best of ${matchTarget} Legs)`;
-        } else {
-            let setsValue = parseInt(document.getElementById('input-sets-slider').value);
-            matchTarget = setsValue;
-            window.setsRequiredForMatch = Math.ceil(setsValue / 2);
-            document.getElementById('game-title').innerText = `${initialPoints}er Match (Best of ${setsValue} Sets, Legs pro Set: Best of ${legsValue})`;
-        }
+        document.getElementById('game-title').innerText = `${initialPoints}er Match (Best of ${setsValue} Sets, Legs pro Set: Best of ${legsValue})`;
 
         if (inputMode === 'set') {
             document.getElementById('set-input-container').classList.remove('hidden');
@@ -754,31 +734,23 @@ function handleLegOrSetWin() {
     let winner = activePlayer;
     let isEn = currentLanguageCode.startsWith('en');
     
-    if (matchType === 'legs') {
-        legs[winner]++;
-        let requiredLegsToWinMatch = Math.ceil(matchTarget / 2);
-        if (legs[winner] >= requiredLegsToWinMatch) {
+    legs[winner]++;
+    let requiredLegsToWinSet = window.legsRequiredForSet || 3;
+    
+    if (legs[winner] >= requiredLegsToWinSet) {
+        legs[1] = 0; legs[2] = 0; 
+        sets[winner]++;
+        
+        let requiredSetsToWinMatch = window.setsRequiredForMatch || 1;
+        if (sets[winner] >= requiredSetsToWinMatch) {
             showVictory(winner); return;
+        } else {
+            speak(isEn ? "Set won!" : "Set gewonnen!");
+            alert(isEn ? `Player ${winner} won the set!` : `Spieler ${winner} gewinnt den Satz!`);
         }
     } else {
-        legs[winner]++;
-        let requiredLegsToWinSet = window.legsRequiredForSet || 3;
-        
-        if (legs[winner] >= requiredLegsToWinSet) {
-            legs[1] = 0; legs[2] = 0; 
-            sets[winner]++;
-            
-            let requiredSetsToWinMatch = window.setsRequiredForMatch || 2;
-            if (sets[winner] >= requiredSetsToWinMatch) {
-                showVictory(winner); return;
-            } else {
-                speak(isEn ? "Set won!" : "Set gewonnen!");
-                alert(isEn ? `Player ${winner} won the set!` : `Spieler ${winner} gewinnt den Satz!`);
-            }
-        }
+        speak(isEn ? "Leg finished!" : "Leg beendet!");
     }
-
-    speak(isEn ? "Leg finished!" : "Leg beendet!");
     
     scores[1] = initialPoints; scores[2] = initialPoints;
     legDartsCount[1] = 0; legDartsCount[2] = 0;

@@ -78,7 +78,7 @@ function safeInit() {
     populateSodTargets();
     initEventListeners();
     initVoices();
-    initSliderLabels(); // Initialisiert Anzeigetexte der Regler beim Laden
+    initSliderLabels();
 }
 
 if (document.readyState === 'loading') {
@@ -480,7 +480,7 @@ function startGame() {
         initialPoints = parseInt(getSelectedValue('group-points'));
         scores[1] = initialPoints; scores[2] = initialPoints;
 
-        // Auslesen der Schieberegler
+        // Direktes Auslesen der Schieberegler
         let legsValue = parseInt(document.getElementById('input-legs-slider').value);
         let setsValue = parseInt(document.getElementById('input-sets-slider').value);
         

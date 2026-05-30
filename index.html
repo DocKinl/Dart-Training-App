@@ -2,7 +2,7 @@
 <html lang="de">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content=\"width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>DocKinl Dart Scorer</title>
     <style>
         :root {
@@ -687,3 +687,100 @@
             </div>
 
             <button class="btn-main" id="btn-start-game" style="margin-top: 5px;">SPIEL STARTEN</button>
+        </div>
+
+        <div id="spielseite" class="page hidden">
+            <div class="match-header" id="game-title">501er Match</div>
+            
+            <div class="scoreboard" id="main-scoreboard">
+                <div class="player-card active" id="p1-card">
+                    <div class="player-name" id="p1-title">Spieler 1</div>
+                    <div class="player-legs" id="p1-legs-sets">Legs: 0 | Sets: 0</div>
+                    <div class="player-score" id="p1-score">501</div>
+                    <div class="player-avg" id="p1-live-avg">Ø 0.0 (0 Darts)</div>
+                    <div style="font-size:11px; color:var(--accent-color); font-weight:bold; margin-top:3px;" id="p1-sub" class="hidden">Versuch: 1</div>
+                </div>
+                <div class="player-card hidden" id="p2-card">
+                    <div class="player-name" id="p2-title">Spieler 2</div>
+                    <div class="player-legs" id="p2-legs-sets">Legs: 0 | Sets: 0</div>
+                    <div class="player-score" id="p2-score">501</div>
+                    <div class="player-avg" id="p2-live-avg">Ø 0.0 (0 Darts)</div>
+                </div>
+            </div>
+
+            <div class="error-msg" id="error-message"></div>
+
+            <div class="input-area">
+                <div id="segment-input-container">
+                    <div class="preview-row">
+                        <div class="preview-box active-slot" id="box-d1">Dart 1: -</div>
+                        <div class="preview-box" id="box-d2">Dart 2: -</div>
+                        <div class="preview-box" id="box-d3">Dart 3: -</div>
+                    </div>
+                    <div class="multiplier-row">
+                        <button class="btn-mult active" id="vmult-1">Single</button>
+                        <button class="btn-mult" id="vmult-2">Doppel</button>
+                        <button class="btn-mult" id="vmult-3">Triple</button>
+                    </div>
+                    <div class="keyboard-grid">
+                        <button class="numkey" data-val="20">20</button>
+                        <button class="numkey" data-val="19">19</button>
+                        <button class="numkey" data-val="18">18</button>
+                        <button class="numkey" data-val="17">17</button>
+                        <button class="numkey" data-val="16">16</button>
+                        <button class="numkey" data-val="15">15</button>
+                        <button class="numkey" data-val="14">14</button>
+                        <button class="numkey" data-val="13">13</button>
+                        <button class="numkey" data-val="12">12</button>
+                        <button class="numkey" data-val="11">11</button>
+                        <button class="numkey" data-val="10">10</button>
+                        <button class="numkey" data-val="9">9</button>
+                        <button class="numkey" data-val="8">8</button>
+                        <button class="numkey" data-val="7">7</button>
+                        <button class="numkey" data-val="6">6</button>
+                        <button class="numkey" data-val="5">5</button>
+                        <button class="numkey" data-val="4">4</button>
+                        <button class="numkey" data-val="3">3</button>
+                        <button class="numkey" data-val="2">2</button>
+                        <button class="numkey" data-val="1">1</button>
+                        <button class="numkey" data-val="bull" style="background-color:#133e2b; color:white;">Bull</button>
+                        <button class="numkey" data-val="0" style="grid-column: span 2;">Miss (0)</button>
+                        <button class="numkey" id="vkey-clear-segments" style="grid-column: span 2; background-color:#555; color:white;">Löschen</button>
+                    </div>
+                </div>
+
+                <div id="set-input-container" class="hidden">
+                    <div class="sum-display-box" id="virtual-sum-display">0</div>
+                    <div class="keyboard-grid-shortcuts">
+                        <button class="shortcut" data-sum="26">26</button>
+                        <button class="shortcut" data-sum="41">41</button>
+                        <button class="shortcut" data-sum="45">45</button>
+                        <button class="shortcut" data-sum="60">60</button>
+                        <button class="shortcut" data-sum="81">81</button>
+                        <button class="shortcut" data-sum="85">85</button>
+                        <button class="shortcut" data-sum="100">100</button>
+                        <button class="shortcut" data-sum="140">140</button>
+                    </div>
+                    <div class="keyboard-grid-sum">
+                        <button class="sumkey" data-num="1">1</button>
+                        <button class="sumkey" data-num="2">2</button>
+                        <button class="sumkey" data-num="3">3</button>
+                        <button class="sumkey" data-num="4">4</button>
+                        <button class="sumkey" data-num="5">5</button>
+                        <button class="sumkey" data-num="6">6</button>
+                        <button class="sumkey" data-num="7">7</button>
+                        <button class="sumkey" data-num="8">8</button>
+                        <button class="sumkey" data-num="9">9</button>
+                        <button class="sumkey" id="vkey-clear-sum" style="background-color:#555; color:white;">CLR</button>
+                        <button class="sumkey" data-num="0">0</button>
+                        <button class="sumkey" id="vkey-submit-sum" style="background-color:#133e2b; color:white;">OK</button>
+                    </div>
+                </div>
+            </div>
+
+            <button class="btn-main" id="submit-btn" style="margin-top:10px; background-color:#133e2b; border-color:#195239;">BESTÄTIGEN</button>
+            <button class="btn-main" id="btn-abort-game" style="margin-top:8px; background-color:#555; border-color:#666; font-size:14px; padding:8px;">Spiel abbrechen</button>
+
+            <div class="history-section" id="main-history-layout">
+                <div class="history-box" id="p1-history-box">
+                    <div class="history-title" id="h1-header">Verlauf S1</div>

@@ -1,12 +1,12 @@
-// Globale State-Variablen
-let activeGlobalMode = 'x01';
+// ==========================================
+// 1. GLOBALE STATE-VARIABLEN (NUR X01)
+// ==========================================
 let initialPoints = 501;
 let isTwoPlayers = false;
 let isBotMatch = false;
-let botLevel = 'medium';
-let inputMode = 'segment';
-let outMode = 'double';
-let isCheckoutHelperActive = true;
+let botLevel = 'medium';      // 'easy', 'medium', 'strong', 'insane'
+let inputMode = 'segment';    // 'segment' (Darts einzeln) oder 'set' (Aufnahme)
+let outMode = 'double';       // 'double' (Double Out) oder 'single' (Single Out)
 
 // Match-Struktur Variablen
 let scores = { 1: 501, 2: 501 };
@@ -17,7 +17,7 @@ let histories = { 1: [], 2: [] };
 let activePlayer = 1;
 let isLockingInput = false;
 
-// Tracker für Statistiken (Echte Gesamtwerte)
+// Tracker für Statistiken
 let matchStats = {
     1: { totalPoints: 0, totalDarts: 0, first9Points: 0, first9Darts: 0, turns: 0, c100: 0, c140: 0, c180: 0, highestTurn: 0, highestFinish: 0, shortestLeg: 999 },
     2: { totalPoints: 0, totalDarts: 0, first9Points: 0, first9Darts: 0, turns: 0, c100: 0, c140: 0, c180: 0, highestTurn: 0, highestFinish: 0, shortestLeg: 999 }
@@ -34,51 +34,33 @@ let virtualDartData = {
 };
 let virtualSumValue = 0;
 
-// Finishing Variablen
-let finAttempts = 0;
-let finTargetScore = 0;
-let finTypeSetting = 'realistic';
-
-// System-Optionen
+// System-Optionen (Standardwerte)
 let isSpeechOutputActive = true;
+let isCheckoutHelperActive = true;
 let currentTheme = 'dark';
-
-const invalidFinishes = [169, 168, 166, 165, 163, 162, 159];
-const impossibleScores = [179, 178, 176, 175, 173, 172, 169, 166, 163, 162, 159];
-
-const checkoutRoutes = {
-    170: ["T20", "T20", "D50"], 167: ["T20", "T19", "D50"], 164: ["T20", "T18", "D50"], 161: ["T20", "T17", "D50"],
-    160: ["T20", "T20", "D20"], 158: ["T20", "T20", "D19"], 157: ["T20", "T19", "D20"], 156: ["T20", "T20", "D18"],
-    155: ["T20", "T19", "D19"], 154: ["T20", "T18", "D20"], 153: ["T20", "T19", "D18"], 152: ["T20", "T17", "D20"],
-    151: ["T20", "T17", "D19"], 150: ["T20", "T18", "D18"], 149: ["T20", "T19", "D16"], 148: ["T20", "T16", "D20"],
-    147: ["T20", "T17", "D18"], 146: ["T20", "T18", "D16"], 145: ["T20", "T15", "D20"], 144: ["T20", "T20", "D12"],
-    143: ["T20", "T17", "D16"], 142: ["T20", "T14", "D20"], 141: ["T20", "T15", "D18"], 140: ["T20", "T16", "D16"],
-    139: ["T19", "T14", "D20"], 138: ["T20", "T14", "D18"], 137: ["T19", "T16", "D16"], 136: ["T20", "T20", "D8"],
-    135: ["T20", "T15", "D15"], 134: ["T20", "T14", "D16"], 133: ["T20", "T17", "D11"], 132: ["T20", "T16", "D12"],
-    131: ["T20", "T13", "D16"], 130: ["T20", "T18", "D8"],  129: ["T19", "T16", "D12"], 128: ["T18", "T14", "D16"],
-    127: ["T20", "T17", "D8"],  126: ["T19", "T19", "D6"],  125: ["T20", "T15", "D10"], 124: ["T20", "D16", "D16"],
-    123: ["T19", "T16", "D9"],  122: ["T18", "T16", "D10"], 121: ["T20", "T11", "D14"], 120: ["T20", "S20", "D20"],
-    119: ["T19", "S10", "D26"], 118: ["T20", "S18", "D20"], 117: ["T20", "S17", "D20"], 116: ["T20", "S16", "D20"],
-    115: ["T20", "S15", "D20"], 114: ["T20", "S14", "D20"], 113: ["T19", "S16", "D20"], 112: ["T20", "S12", "D20"],
-    111: ["T20", "S19", "D16"], 110: ["T20", "S10", "D20"], 109: ["T19", "S12", "D20"], 108: ["T19", "S19", "D16"],
-    107: ["T19", "S10", "D20"], 106: ["T20", "S10", "D18"], 105: ["T19", "S16", "D16"], 104: ["T20", "S12", "D16"],
-    103: ["T19", "S10", "D18"], 102: ["T20", "S10", "D14"], 101: ["T20", "S13", "D11"], 100: ["T20", "D20"],
-    90: ["T18", "D18"], 80: ["T20", "D10"], 70: ["T10", "D20"], 60: ["S20", "D20"], 50: ["S10", "D20"], 40: ["D20"]
-};
-
 let selectedVoice = null;
 let currentLanguageCode = 'de-DE';
 
+// Konstanten für Checkouts
+const invalidFinishes = [169, 168, 166, 165, 163, 162, 159];
+const impossibleScores = [179, 178, 176, 175, 173, 172, 169, 166, 163, 162, 159];
+
+// ==========================================
+// 2. INITIALISIERUNG & SETUP
+// ==========================================
 function safeInit() {
     const startBtn = document.getElementById('btn-start-game');
     if (!startBtn) {
         setTimeout(safeInit, 50);
         return;
     }
-    populateSodTargets();
     initEventListeners();
     initVoices();
     initSliderLabels();
+    
+    // Erzwinge korrekte Startansicht für X01-Einstellungen
+    const botOptions = document.getElementById('options-bot');
+    if (botOptions) botOptions.classList.add('hidden');
 }
 
 if (document.readyState === 'loading') {
@@ -89,22 +71,6 @@ if (document.readyState === 'loading') {
 
 if (typeof speechSynthesis !== 'undefined' && speechSynthesis.onvoiceschanged !== undefined) {
     speechSynthesis.onvoiceschanged = initVoices;
-}
-
-function populateSodTargets() {
-    const select = document.getElementById('sod-target-select');
-    if (!select) return;
-    select.innerHTML = "";
-    for(let i=20; i>=1; i--) {
-        let opt = document.createElement('option');
-        opt.value = i.toString();
-        opt.textContent = `Segment ${i}`;
-        select.appendChild(opt);
-    }
-    let optBull = document.createElement('option');
-    optBull.value = "bull";
-    optBull.textContent = "Bullseye";
-    select.appendChild(optBull);
 }
 
 function initVoices() {
@@ -147,6 +113,9 @@ function initVoices() {
     });
 }
 
+// ==========================================
+// 3. SLIDER & LABELS LOGIK (NUR X01)
+// ==========================================
 function initSliderLabels() {
     const pSlider = document.getElementById('input-points-slider');
     const pLabel = document.getElementById('points-slider-label');
@@ -169,7 +138,11 @@ function initSliderLabels() {
     }
 }
 
+// ==========================================
+// 4. EVENT LISTENERS (ABSTURZSICHER)
+// ==========================================
 function initEventListeners() {
+    // Einstellungen Modal
     document.querySelectorAll('.btn-settings-open').forEach(btn => {
         btn.onclick = () => { document.getElementById('settings-modal').classList.remove('hidden'); };
     });
@@ -178,15 +151,24 @@ function initEventListeners() {
         settingsClose.onclick = () => { document.getElementById('settings-modal').classList.add('hidden'); };
     }
 
-    document.getElementById('btn-open-stats').onclick = openStatsModal;
-    document.getElementById('btn-stats-close').onclick = () => document.getElementById('stats-modal').classList.add('hidden');
-    document.getElementById('btn-clear-stats').onclick = () => {
-        if(confirm("Alle gespeicherten Daten unwiderruflich löschen?")) {
-            localStorage.removeItem('docKinl_dart_stats');
-            openStatsModal();
-        }
-    };
+    // Statistiken Modal
+    const openStatsBtn = document.getElementById('btn-open-stats');
+    if (openStatsBtn) openStatsBtn.onclick = openStatsModal;
+    
+    const closeStatsBtn = document.getElementById('btn-stats-close');
+    if (closeStatsBtn) closeStatsBtn.onclick = () => document.getElementById('stats-modal').classList.add('hidden');
+    
+    const clearStatsBtn = document.getElementById('btn-clear-stats');
+    if (clearStatsBtn) {
+        clearStatsBtn.onclick = () => {
+            if(confirm("Alle gespeicherten Daten unwiderruflich löschen?")) {
+                localStorage.removeItem('docKinl_dart_stats');
+                openStatsModal();
+            }
+        };
+    }
 
+    // Optionsgruppen (Klick-Handler)
     setupGroupListeners('group-theme-select', (val, btn) => {
         selectOption('group-theme-select', btn);
         currentTheme = val;
@@ -198,7 +180,7 @@ function initEventListeners() {
         selectOption('group-toggle-tts', btn);
         isSpeechOutputActive = (val === 'true');
         const subMenu = document.getElementById('sub-voice-settings');
-        if (subMenu) subMenu.style.display = isSpeechOutputActive ? 'block' : 'none';
+        if (subMenu) subMenu.style.style.display = isSpeechOutputActive ? 'block' : 'none';
     });
 
     setupGroupListeners('group-toggle-helper', (val, btn) => {
@@ -206,13 +188,20 @@ function initEventListeners() {
         isCheckoutHelperActive = (val === 'true');
     });
 
-    setupGroupListeners('group-game-mode', (val, btn) => changeGameMode(val, btn));
+    // WICHTIG: Gegner-Auswahl (Alleine, Spieler 2, Bot) mit Bot-Menü-Steuerung
     setupGroupListeners('group-players', (val, btn) => {
         selectOption('group-players', btn);
-        if(val === 'bot') document.getElementById('options-bot').classList.remove('hidden');
-        else document.getElementById('options-bot').classList.add('hidden');
+        const botOptions = document.getElementById('options-bot');
+        if (botOptions) {
+            if (val === 'bot') {
+                botOptions.classList.remove('hidden');
+            } else {
+                botOptions.classList.add('hidden');
+            }
+        }
     });
 
+    // Slider Event Listener
     const pointsSlider = document.getElementById('input-points-slider');
     if (pointsSlider) {
         pointsSlider.oninput = function() {
@@ -241,53 +230,20 @@ function initEventListeners() {
         };
     }
 
+    // Weitere Menüoptionen
     setupGroupListeners('group-bot-level', (val, btn) => selectOption('group-bot-level', btn));
     setupGroupListeners('group-input-mode', (val, btn) => selectOption('group-input-mode', btn));
     setupGroupListeners('group-out', (val, btn) => selectOption('group-out', btn));
-    setupGroupListeners('group-fin-type', (val, btn) => changeFinishingType(val, btn));
-    setupGroupListeners('group-fin-range', (val, btn) => selectOption('group-fin-range', btn));
-    setupGroupListeners('group-atc-bonus', (val, btn) => selectOption('group-atc-bonus', btn));
-    setupGroupListeners('group-sod-darts', (val, btn) => selectOption('group-sod-darts', btn));
-    setupGroupListeners('group-sod-ring', (val, btn) => selectOption('group-sod-ring', btn));
 
-    document.getElementById('vmult-1').onclick = () => setVirtualMultiplier(1);
-    document.getElementById('vmult-2').onclick = () => setVirtualMultiplier(2);
-    document.getElementById('vmult-3').onclick = () => setVirtualMultiplier(3);
+    // Spiel-Buttons
+    const startBtn = document.getElementById('btn-start-game');
+    if (startBtn) startBtn.onclick = startGame;
 
-    document.querySelectorAll('.keyboard-grid .numkey, [data-val="bull"], [data-val="0"]').forEach(btn => {
-        btn.onclick = function() {
-            let value = this.getAttribute('data-val');
-            inputVirtualDart(value);
-        };
-    });
+    const abortBtn = document.getElementById('btn-abort-game');
+    if (abortBtn) abortBtn.onclick = abortGame;
 
-    document.getElementById('vkey-clear-segments').onclick = clearLastVirtualDart;
-
-    document.getElementById('box-d1').onclick = () => setActiveDartSlot(1);
-    document.getElementById('box-d2').onclick = () => setActiveDartSlot(2);
-    document.getElementById('box-d3').onclick = () => setActiveDartSlot(3);
-
-    document.querySelectorAll('.keyboard-grid-sum .sumkey').forEach(btn => {
-        btn.onclick = function() {
-            let num = this.getAttribute('data-num');
-            appendVirtualSum(num);
-        };
-    });
-
-    document.querySelectorAll('.keyboard-grid-shortcuts .shortcut').forEach(btn => {
-        btn.onclick = function() {
-            let exactSum = parseInt(this.getAttribute('data-sum'));
-            setVirtualSum(exactSum);
-        };
-    });
-
-    document.getElementById('vkey-clear-sum').onclick = () => { setVirtualSum(0); };
-    document.getElementById('vkey-submit-sum').onclick = submitScore;
-
-    document.getElementById('btn-start-game').onclick = startGame;
-    document.getElementById('btn-abort-game').onclick = abortGame;
-    document.getElementById('submit-btn').onclick = submitScore;
-    document.getElementById('btn-reset-game').onclick = resetGame;
+    const resetBtn = document.getElementById('btn-reset-game');
+    if (resetBtn) resetBtn.onclick = resetGame;
 }
 
 function setupGroupListeners(groupId, callback) {
@@ -298,190 +254,157 @@ function setupGroupListeners(groupId, callback) {
     });
 }
 
-function changeFinishingType(val, btn) {
-    selectOption('group-fin-type', btn);
-    const wrapper = document.getElementById('wrapper-fin-range');
-    if (wrapper) wrapper.style.display = (val === 'strict') ? 'none' : 'block';
-}
-
 function selectOption(groupId, element) {
-    document.querySelectorAll(`#${groupId} .btn-option`).forEach(btn => btn.classList.remove('active'));
+    const container = document.getElementById(groupId);
+    if (!container) return;
+    container.querySelectorAll('.btn-option').forEach(btn => btn.classList.remove('active'));
     element.classList.add('active');
 }
 
 function getSelectedValue(groupId) {
-    const activeBtn = document.querySelector(`#${groupId} .btn-option.active`);
+    const container = document.getElementById(groupId);
+    if (!container) return null;
+    const activeBtn = container.querySelector('.btn-option.active');
     return activeBtn ? activeBtn.getAttribute('data-value') : null;
 }
 
-function changeGameMode(mode, element) {
-    selectOption('group-game-mode', element);
-    activeGlobalMode = mode;
-    document.getElementById('options-x01').classList.add('hidden');
-    document.getElementById('options-fin').classList.add('hidden');
-    document.getElementById('options-atc').classList.add('hidden');
-    document.getElementById('options-sod').classList.add('hidden');
-    document.getElementById('wrapper-players').classList.remove('hidden');
-    document.getElementById('options-bot').classList.add('hidden');
+// ==========================================
+// 5. STEUERUNG SPIELSTART (NUR X01)
+// ==========================================
+function startGame() {
+    let opponentType = getSelectedValue('group-players');
+    isTwoPlayers = (opponentType === "2");
+    isBotMatch = (opponentType === "bot");
+    botLevel = getSelectedValue('group-bot-level') || 'medium';
+    inputMode = getSelectedValue('group-input-mode') || 'segment';
+    outMode = getSelectedValue('group-out') || 'double';
 
-    if (mode === 'x01') {
-        document.getElementById('options-x01').classList.remove('hidden');
-        if(getSelectedValue('group-players') === 'bot') document.getElementById('options-bot').classList.remove('hidden');
-    }
-    else if (mode === 'fin') {
-        document.getElementById('options-fin').classList.remove('hidden');
-        document.getElementById('wrapper-players').classList.add('hidden');
-    }
-    else if (mode === 'atc') document.getElementById('options-atc').classList.remove('hidden');
-    else if (mode === 'sod') {
-        document.getElementById('options-sod').classList.remove('hidden');
-        document.getElementById('wrapper-players').classList.add('hidden');
-    }
-}
+    // Elemente für alternative Modi, falls im HTML vorhanden, unsichtbar machen
+    const optFin = document.getElementById('options-fin'); if (optFin) optFin.classList.add('hidden');
+    const optAtc = document.getElementById('options-atc'); if (optAtc) optAtc.classList.add('hidden');
+    const optSod = document.getElementById('options-sod'); if (optSod) optSod.classList.add('hidden');
 
-function setVirtualMultiplier(mValue) {
-    currentVirtualSelectedMultiplier = mValue;
-    document.querySelectorAll('[id^="vmult-"]').forEach(btn => btn.classList.remove('active'));
-    document.getElementById(`vmult-${mValue}`).classList.add('active');
-}
+    // UI-Elemente für Spielseite vorbereiten
+    const setInput = document.getElementById('set-input-container');
+    const segmentInput = document.getElementById('segment-input-container');
+    const submitBtn = document.getElementById('submit-btn');
 
-function setActiveDartSlot(slotNum) {
-    currentActiveDartSlot = slotNum;
-    document.querySelectorAll('.preview-box').forEach(box => box.classList.remove('active-slot'));
-    const activeBox = document.getElementById(`box-d${slotNum}`);
-    if (activeBox) activeBox.classList.add('active-slot');
-}
+    if (setInput) setInput.classList.add('hidden');
+    if (segmentInput) segmentInput.classList.add('hidden');
 
-function inputVirtualDart(field) {
-    if (isLockingInput) return;
-    document.getElementById('error-message').innerText = "";
-
-    let m = currentVirtualSelectedMultiplier;
-    if (field === "bull" && m === 3) m = 2; 
-    if (field === "0") m = 1;
-
-    let parsed = parseSegmentData(field, m);
-    if (!parsed) return;
-
-    virtualDartData[currentActiveDartSlot] = {
-        val: parsed.val,
-        label: parsed.label,
-        rawField: field,
-        m: m,
-        key: parsed.key
-    };
-
-    updateDartPreviewDOM();
-    let wasBust = checkLiveBustSegment(currentActiveDartSlot);
-
-    if (!wasBust) {
-        if (activeGlobalMode === 'x01' && inputMode === 'segment') {
-            calculateLiveTurnCheckout();
-        }
-        
-        if (currentActiveDartSlot < 3) {
-            setActiveDartSlot(currentActiveDartSlot + 1);
-        }
-    }
-    setVirtualMultiplier(1); 
-}
-
-function clearLastVirtualDart() {
-    virtualDartData[currentActiveDartSlot] = { val: 0, label: "-", rawField: "", m: 1, key: "" };
-    updateDartPreviewDOM();
-    document.getElementById('error-message').innerText = "";
-    if (activeGlobalMode === 'x01' && inputMode === 'segment') {
-        calculateLiveTurnCheckout();
-    }
-}
-
-function updateDartPreviewDOM() {
-    for (let slot = 1; slot <= 3; slot++) {
-        const box = document.getElementById(`box-d${slot}`);
-        if(box) box.innerText = `Dart ${slot}: ${virtualDartData[slot].label}`;
-    }
-}
-
-function appendVirtualSum(digit) {
-    let currentStr = virtualSumValue.toString();
-    if (currentStr === "0") currentStr = "";
-    currentStr += digit;
-    let newSum = parseInt(currentStr) || 0;
-    if (newSum <= 180) setVirtualSum(newSum);
-}
-
-function setVirtualSum(value) {
-    virtualSumValue = value;
-    const disp = document.getElementById('virtual-sum-display');
-    if (disp) disp.innerText = virtualSumValue;
-}
-
-function speak(text) {
-    if (!isSpeechOutputActive) return;
-    let utterance = new SpeechSynthesisUtterance(text);
-    utterance.lang = currentLanguageCode;
-    if (selectedVoice) utterance.voice = selectedVoice;
-    window.speechSynthesis.speak(utterance);
-}
-
-function speakTurnResult(score, rest) {
-    if (!isSpeechOutputActive) return;
-    window.speechSynthesis.cancel();
-    let scoreUtterance = new SpeechSynthesisUtterance(score.toString());
-    scoreUtterance.lang = currentLanguageCode;
-    if (selectedVoice) scoreUtterance.voice = selectedVoice;
-
-    scoreUtterance.onend = () => {
-        if (typeof rest === 'number' && rest > 0) {
-            let isEn = currentLanguageCode.startsWith('en');
-            let restUtterance = new SpeechSynthesisUtterance(isEn ? "Remaining " + rest : "Rest " + rest);
-            restUtterance.lang = currentLanguageCode;
-            if (selectedVoice) restUtterance.voice = selectedVoice;
-            window.speechSynthesis.speak(restUtterance);
-        }
-    };
-    window.speechSynthesis.speak(scoreUtterance);
-}
-
-function triggerCheckoutHelperVoice(score) {
-    if(!isSpeechOutputActive || !isCheckoutHelperActive || score > 170 || invalidFinishes.includes(score)) return;
-    let route = null;
-    if (checkoutRoutes[score]) route = checkoutRoutes[score];
-    else if (score <= 40 && score % 2 === 0) route = ["D" + (score/2)];
+    document.getElementById('p1-title').innerText = "Spieler 1";
+    document.getElementById('p2-title').innerText = isBotMatch ? `Computer (${botLevel.toUpperCase()})` : "Spieler 2";
+    document.getElementById('h1-header').innerText = "Verlauf S1";
+    document.getElementById('h2-header').innerText = isBotMatch ? "Verlauf Bot" : "Verlauf S2";
     
-    if (route) {
-        let text = currentLanguageCode.startsWith('en') ? `Target ${score}. Try ` : `${score} Rest. Versuche `;
-        let elements = route.map(r => r.replace('T', 'Triple ').replace('D', 'Doppel ').replace('S', 'Single '));
-        text += elements.join(', ');
-        let utterance = new SpeechSynthesisUtterance(text);
-        utterance.lang = currentLanguageCode;
-        if(selectedVoice) utterance.voice = selectedVoice;
-        setTimeout(() => window.speechSynthesis.speak(utterance), 1200);
+    if (submitBtn) submitBtn.classList.remove('hidden');
+
+    // Stats zurücksetzen
+    matchStats = {
+        1: { totalPoints: 0, totalDarts: 0, first9Points: 0, first9Darts: 0, turns: 0, c100: 0, c140: 0, c180: 0, highestTurn: 0, highestFinish: 0, shortestLeg: 999 },
+        2: { totalPoints: 0, totalDarts: 0, first9Points: 0, first9Darts: 0, turns: 0, c100: 0, c140: 0, c180: 0, highestTurn: 0, highestFinish: 0, shortestLeg: 999 }
+    };
+    legs = { 1: 0, 2: 0 }; sets = { 1: 0, 2: 0 };
+    legDartsCount = { 1: 0, 2: 0 };
+
+    // Punkte aus Slider auslesen
+    const sliderVal = document.getElementById('input-points-slider') ? parseInt(document.getElementById('input-points-slider').value) : 501;
+    initialPoints = sliderVal;
+    scores[1] = initialPoints; 
+    scores[2] = initialPoints;
+
+    const legsValue = document.getElementById('input-legs-slider') ? parseInt(document.getElementById('input-legs-slider').value) : 5;
+    const setsValue = document.getElementById('input-sets-slider') ? parseInt(document.getElementById('input-sets-slider').value) : 3;
+    
+    window.legsRequiredForSet = Math.ceil(legsValue / 2);
+    window.setsRequiredForMatch = Math.ceil(setsValue / 2);
+
+    document.getElementById('game-title').innerText = `${initialPoints}er Match (Best of ${setsValue} Sets, Legs pro Set: Best of ${legsValue})`;
+
+    // Richtigen Input-Modus einblenden
+    if (inputMode === 'set') {
+        if (setInput) setInput.classList.remove('hidden');
+        if (submitBtn) submitBtn.classList.add('hidden'); // Der Sum-Submit Button übernimmt
+    } else {
+        if (segmentInput) segmentInput.classList.remove('hidden');
+    }
+
+    // Standard-Felder einblenden
+    document.getElementById('p1-legs-sets').classList.remove('hidden');
+    document.getElementById('p2-legs-sets').classList.remove('hidden');
+    document.getElementById('p1-live-avg').classList.remove('hidden');
+    document.getElementById('p2-live-avg').classList.remove('hidden');
+
+    histories[1] = []; histories[2] = []; activePlayer = 1; isLockingInput = false;
+    updateScoreboardDisplays();
+
+    document.getElementById('p1-history-list').innerHTML = "";
+    document.getElementById('p2-history-list').innerHTML = "";
+    document.getElementById('p1-card').classList.add('active');
+    document.getElementById('p2-card').classList.remove('active');
+
+    if (isTwoPlayers || isBotMatch) {
+        document.getElementById('p2-card').classList.remove('hidden');
+        document.getElementById('p2-history-box').classList.remove('hidden');
+    } else {
+        document.getElementById('p2-card').classList.add('hidden');
+        document.getElementById('p2-history-box').classList.add('hidden');
+    }
+
+    resetVirtualState();
+    document.getElementById('startseite').classList.add('hidden');
+    document.getElementById('spielseite').classList.remove('hidden');
+}
+
+function updateScoreboardDisplays() {
+    document.getElementById('p1-score').innerText = scores[1];
+    document.getElementById('p2-score').innerText = scores[2];
+    document.getElementById('p1-legs-sets').innerText = `Legs: ${legs[1]} | Sets: ${sets[1]}`;
+    document.getElementById('p2-legs-sets').innerText = `Legs: ${legs[2]} | Sets: ${sets[2]}`;
+
+    let p1TripleAvg = matchStats[1].totalDarts > 0 ? ((matchStats[1].totalPoints / matchStats[1].totalDarts) * 3).toFixed(1) : "0.0";
+    let p2TripleAvg = matchStats[2].totalDarts > 0 ? ((matchStats[2].totalPoints / matchStats[2].totalDarts) * 3).toFixed(1) : "0.0";
+    
+    document.getElementById('p1-live-avg').innerText = `Ø ${p1TripleAvg} (${matchStats[1].totalDarts} Darts)`;
+    document.getElementById('p2-live-avg').innerText = `Ø ${p2TripleAvg} (${matchStats[2].totalDarts} Darts)`;
+}
+
+function abortGame() {
+    if (confirm("Spiel wirklich abbrechen?")) {
+        document.getElementById('spielseite').classList.add('hidden');
+        document.getElementById('startseite').classList.remove('hidden');
     }
 }
 
-function calculateLiveTurnCheckout() {
-    if (!isCheckoutHelperActive || !isSpeechOutputActive) return;
+function resetGame() {
+    document.getElementById('abschlussseite').classList.add('hidden');
+    document.getElementById('startseite').classList.remove('hidden');
+}
 
-    let currentScore = scores[activePlayer];
-    let d1 = virtualDartData[1].val || 0;
-    let d2 = virtualDartData[2].val || 0;
-    let d3 = virtualDartData[3].val || 0;
+function openStatsModal() {
+    let raw = localStorage.getItem('docKinl_dart_stats');
+    let stats = raw ? JSON.parse(raw) : { totalGames: 0, sumAvg: 0, highestTurn: 0, highestFinish: 0, total180s: 0 };
+    
+    document.getElementById('stat-total-games').innerText = stats.totalGames;
+    document.getElementById('stat-alltime-avg').innerText = stats.totalGames > 0 ? (stats.sumAvg / stats.totalGames).toFixed(1) : "0.0";
+    document.getElementById('stat-highest-turn').innerText = stats.highestTurn;
+    document.getElementById('stat-highest-co').innerText = stats.highestFinish;
+    document.getElementById('stat-total-180s').innerText = stats.total180s;
 
-    let dartsThrownInTurn = 0;
-    if (virtualDartData[1].label !== "-") dartsThrownInTurn++;
-    if (virtualDartData[2].label !== "-") dartsThrownInTurn++;
-    if (virtualDartData[3].label !== "-") dartsThrownInTurn++;
+    document.getElementById('stats-modal').classList.remove('hidden');
+}
 
-    let dartsRemaining = 3 - dartsThrownInTurn;
-    let currentRemainingScore = currentScore - (d1 + d2 + d3);
-
-    let isEn = currentLanguageCode.startsWith('en');
-
-    if (currentRemainingScore === 0) return;
-
-    if (currentScore > 170 && currentRemainingScore > 170) {
-        return; 
-    }
-
-    let maxPossibleScoreWithRemainingD
+function resetVirtualState() {
+    virtualDartData = {
+        1: { val: 0, label: "-", rawField: "", m: 1, key: "" },
+        2: { val: 0, label: "-", rawField: "", m: 1, key: "" },
+        3: { val: 0, label: "-", rawField: "", m: 1, key: "" }
+    };
+    const b1 = document.getElementById('box-d1'); if(b1) b1.innerText = "Dart 1: -";
+    const b2 = document.getElementById('box-d2'); if(b2) b2.innerText = "Dart 2: -";
+    const b3 = document.getElementById('box-d3'); if(b3) b3.innerText = "Dart 3: -";
+    currentActiveDartSlot = 1;
+    currentVirtualSelectedMultiplier = 1;
+    virtualSumValue = 0;
+    const disp = document.getElementById('virtual-sum-display'); if (disp) disp.innerText = 0;
+}

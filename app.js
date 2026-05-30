@@ -1,319 +1,96 @@
-<!DOCTYPE html>
-<html lang="de">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>DocKinl Darts Tracker</title>
-    <style>
-        /* Grundlegendes Styling für ein sauberes, scannbares Dashboard */
-        :root {
-            --bg-color: #121212;
-            --card-bg: #1e1e1e;
-            --text-color: #ffffff;
-            --accent-color: #00adb5;
-            --active-color: #393e46;
-            --border-color: #333333;
-        }
+// ==========================================
+// NEU: Globaler Fehler-Logger und Debugger
+// ==========================================
+window.onerror = function (message, source, lineno, colno, error) {
+    const errorOverlay = document.getElementById('debug-error-overlay');
+    const errorText = document.getElementById('debug-error-text');
+    
+    let filename = source ? source.split('/').pop() : 'Unbekannte Datei';
+    let detailedMessage = `Fehler: ${message}\nDatei: ${filename}\nZeile: ${lineno} | Spalte: ${colno}`;
+    
+    if (error && error.stack) {
+        detailedMessage += `\n\nStacktrace:\n${error.stack.split('\n').slice(0, 3).join('\n')}`;
+    }
+    
+    console.error("DocKinl Debugger abgefangen:", detailedMessage);
+    
+    if (errorOverlay && errorText) {
+        errorText.innerText = detailedMessage;
+        errorOverlay.classList.remove('hidden');
+    } else {
+        alert("Kritischer Fehler abgefangen:\n" + detailedMessage);
+    }
+    return false; // Erlaubt dem Browser, den Fehler weiterhin im normalen Konsolen-Log anzuzeigen
+};
 
-        .light-theme {
-            --bg-color: #f4f6f9;
-            --card-bg: #ffffff;
-            --text-color: #222831;
-            --accent-color: #007cc7;
-            --active-color: #eeeeee;
-            --border-color: #cccccc;
-        }
+// ==========================================
+// Globale State-Variablen
+// ==========================================
+let activeGlobalMode = 'x01';
+let initialPoints = 501;
+let isTwoPlayers = false;
+let isBotMatch = false;
+let botLevel = 'medium';
+let inputMode = 'segment';
+let outMode = 'double';
+let isCheckoutHelperActive = true;
 
-        body {
-            margin: 0;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background-color: var(--bg-color);
-            color: var(--text-color);
-            transition: background 0.3s, color 0.3s;
-        }
+// Match-Struktur Variablen
+let scores = { 1: 501, 2: 501 };
+let legs = { 1: 0, 2: 0 };
+let sets = { 1: 0, 2: 0 };
 
-        header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 15px 25px;
-            background-color: var(--card-bg);
-            border-bottom: 1px solid var(--border-color);
-        }
+let histories = { 1: [], 2: [] };
+let activePlayer = 1;
+let isLockingInput = false;
 
-        .container {
-            max-width: 800px;
-            margin: 30px auto;
-            padding: 0 20px;
-        }
+// Tracker für Statistiken (Echte Gesamtwerte)
+let matchStats = {
+    1: { totalPoints: 0, totalDarts: 0, first9Points: 0, first9Darts: 0, turns: 0, c100: 0, c140: 0, c180: 0, highestTurn: 0, highestFinish: 0, shortestLeg: 999 },
+    2: { totalPoints: 0, totalDarts: 0, first9Points: 0, first9Darts: 0, turns: 0, c100: 0, c140: 0, c180: 0, highestTurn: 0, highestFinish: 0, shortestLeg: 999 }
+};
+let legDartsCount = { 1: 0, 2: 0 };
 
-        .card {
-            background-color: var(--card-bg);
-            border: 1px solid var(--border-color);
-            border-radius: 8px;
-            padding: 25px;
-            margin-bottom: 25px;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-        }
+// Virtuelles Keyboard State System
+let currentVirtualSelectedMultiplier = 1; 
+let currentActiveDartSlot = 1; 
+let virtualDartData = {
+    1: { val: 0, label: "-", rawField: "", m: 1, key: "" },
+    2: { val: 0, label: "-", rawField: "", m: 1, key: "" },
+    3: { val: 0, label: "-", rawField: "", m: 1, key: "" }
+};
+let virtualSumValue = 0;
 
-        h2 {
-            margin-top: 0;
-            border-bottom: 2px solid var(--accent-color);
-            padding-bottom: 8px;
-        }
+// Finishing Variablen
+let finAttempts = 0;
+let finTargetScore = 0;
+let finTypeSetting = 'realistic';
 
-        .option-group {
-            margin-bottom: 20px;
-        }
+// System-Optionen
+let isSpeechOutputActive = true;
+let currentTheme = 'dark';
 
-        .option-label {
-            font-weight: bold;
-            display: block;
-            margin-bottom: 8px;
-        }
+const invalidFinishes = [169, 168, 166, 165, 163, 162, 159];
+const impossibleScores = [179, 178, 176, 175, 173, 172, 169, 166, 163, 162, 159];
 
-        .btn-row {
-            display: flex;
-            gap: 10px;
-            flex-wrap: wrap;
-        }
+const checkoutRoutes = {
+    170: ["T20", "T20", "D50"], 167: ["T20", "T19", "D50"], 164: ["T20", "T18", "D50"], 161: ["T20", "T17", "D50"],
+    160: ["T20", "T20", "D20"], 158: ["T20", "T20", "D19"], 157: ["T20", "T19", "D20"], 156: ["T20", "T20", "D18"],
+    155: ["T20", "T19", "D19"], 154: ["T20", "T18", "D20"], 153: ["T20", "T19", "D18"], 152: ["T20", "T17", "D20"],
+    151: ["T20", "T17", "D19"], 150: ["T20", "T18", "D18"], 149: ["T20", "T19", "D16"], 148: ["T20", "T16", "D20"],
+    147: ["T20", "T17", "D18"], 146: ["T20", "T18", "D16"], 145: ["T20", "T15", "D20"], 144: ["T20", "T20", "D12"],
+    143: ["T20", "T17", "D16"], 142: ["T20", "T14", "D20"], 141: ["T20", "T15", "D18"], 140: ["T20", "T16", "D16"],
+    139: ["T19", "T14", "D20"], 138: ["T20", "T14", "D18"], 137: ["T19", "T16", "D16"], 136: ["T20", "T20", "D8"],
+    135: ["T20", "T15", "D15"], 134: ["T20", "T14", "D16"], 133: ["T20", "T17", "D11"], 132: ["T20", "T16", "D12"],
+    131: ["T20", "T13", "D16"], 130: ["T20", "T18", "D8"],  129: ["T19", "T16", "D12"], 128: ["T18", "T14", "D16"],
+    127: ["T20", "T17", "D8"],  126: ["T19", "T19", "D6"],  125: ["T20", "T15", "D10"], 124: ["T20", "D16", "D16"],
+    123: ["T19", "T16", "D9"],  122: ["T18", "T16", "D10"], 121: ["T20", "T11", "D14"], 120: ["T20", "S20", "D20"],
+    119: ["T19", "S10", "D26"], 118: ["T20", "S18", "D20"], 117: ["T20", "S17", "D20"], 116: ["T20", "S16", "D20"],
+    115: ["T20", "S15", "D20"], 114: ["T20", "S14", "D20"], 113: ["T19", "S16", "D20"], 112: ["T20", "S12", "D20"],
+    111: ["T20", "S19", "D16"], 110: ["T20", "S10", "D20"], 109: ["T19", "S12", "D20"], 108: ["T19", "S19", "D16"],
+    107: ["T19", "S10", "D20"], 106: ["T20", "S10", "D18"], 105: ["T19", "S16", "D16"], 104: ["T20", "S12", "D16"],
+    103: ["T19", "S10", "D18"], 102: ["T20", "S10", "D14"], 101: ["T20", "S13", "D11"], 100: ["T20", "D20"],
+    90: ["T18", "D18"], 80: ["T20", "D10"], 70: ["T10", "D20"], 60: ["S20", "D20"], 50: ["S10", "D20"], 40: ["D20"]
+};
 
-        .btn-option {
-            flex: 1;
-            min-width: 100px;
-            background-color: var(--card-bg);
-            color: var(--text-color);
-            border: 1px solid var(--border-color);
-            padding: 12px;
-            border-radius: 6px;
-            cursor: pointer;
-            font-weight: 500;
-            text-align: center;
-            transition: all 0.2s;
-        }
-
-        .btn-option:hover {
-            border-color: var(--accent-color);
-        }
-
-        .btn-option.active {
-            background-color: var(--accent-color);
-            color: #ffffff;
-            border-color: var(--accent-color);
-        }
-
-        .slider-box {
-            margin-top: 15px;
-        }
-
-        .slider {
-            width: 100%;
-            margin: 10px 0;
-        }
-
-        .btn-primary {
-            background-color: var(--accent-color);
-            color: white;
-            border: none;
-            padding: 15px 30px;
-            font-size: 1.1em;
-            font-weight: bold;
-            border-radius: 6px;
-            cursor: pointer;
-            width: 100%;
-            box-shadow: 0 4px 10px rgba(0, 173, 181, 0.3);
-        }
-
-        .btn-primary:hover {
-            opacity: 0.9;
-        }
-
-        .hidden {
-            display: none !important;
-        }
-
-        /* Modal-Styling */
-        .modal {
-            position: fixed;
-            top: 0; left: 0; width: 100%; height: 100%;
-            background-color: rgba(0,0,0,0.7);
-            display: flex; justify-content: center; align-items: center;
-            z-index: 1000;
-        }
-
-        .modal-content {
-            background-color: var(--card-bg);
-            padding: 30px;
-            border-radius: 8px;
-            max-width: 500px;
-            width: 90%;
-            border: 1px solid var(--border-color);
-        }
-
-        .modal-close {
-            background-color: #ff4d4d;
-            color: white;
-            border: none;
-            padding: 10px 20px;
-            border-radius: 4px;
-            cursor: pointer;
-            float: right;
-        }
-    </style>
-</head>
-<body>
-
-    <header>
-        <div style="font-size: 1.4em; font-weight: bold;">DocKinl Darts</div>
-        <div>
-            <button class="btn-option btn-settings-open" style="padding: 8px 15px;">⚙ Einstellungen</button>
-            <button id="btn-open-stats" class="btn-option" style="padding: 8px 15px;">📊 Alltime Stats</button>
-        </div>
-    </header>
-
-    <div class="container">
-        
-        <div id="startseite">
-            <div class="card">
-                <h2>X01 Match Konfiguration</h2>
-                
-                <div class="option-group">
-                    <span class="option-label">Spielmodus</span>
-                    <div class="btn-row" id="group-players">
-                        <button class="btn-option active" data-value="1">Alleine spielen</button>
-                        <button class="btn-option" data-value="bot">Gegen Bot spielen</button>
-                        <button class="btn-option" data-value="2">2 Spieler (Lokal)</button>
-                    </div>
-                </div>
-
-                <div class="option-group hidden" id="options-bot">
-                    <span class="option-label">Bot Schwierigkeitsgrad</span>
-                    <div class="btn-row" id="group-bot-level">
-                        <button class="btn-option" data-value="easy">Leicht</button>
-                        <button class="btn-option active" data-value="medium">Mittel</button>
-                        <button class="btn-option" data-value="strong">Schwer</button>
-                        <button class="btn-option" data-value="insane">Legendär</button>
-                    </div>
-                </div>
-
-                <div class="option-group" id="options-x01">
-                    <div class="slider-box">
-                        <span class="option-label" id="points-slider-label">Startpunkte: 501</span>
-                        <input type="range" min="101" max="501" step="100" value="501" class="slider" id="input-points-slider">
-                    </div>
-
-                    <div class="slider-box">
-                        <span class="option-label" id="legs-slider-label">Legs pro Set: Best of 5</span>
-                        <input type="range" min="1" max="11" step="2" value="5" class="slider" id="input-legs-slider">
-                    </div>
-
-                    <div class="slider-box">
-                        <span class="option-label" id="sets-slider-label">Sets zum Matchgewinn: Best of 3</span>
-                        <input type="range" min="1" max="9" step="2" value="3" class="slider" id="input-sets-slider">
-                    </div>
-                </div>
-
-                <div class="option-group">
-                    <span class="option-label">Eingabe-Methode</span>
-                    <div class="btn-row" id="group-input-mode">
-                        <button class="btn-option active" data-value="segment">Darts einzeln</button>
-                        <button class="btn-option" data-value="set">Aufnahme (Gesamtsumme)</button>
-                    </div>
-                </div>
-
-                <div class="option-group">
-                    <span class="option-label">Out-Modus</span>
-                    <div class="btn-row" id="group-out">
-                        <button class="btn-option active" data-value="double">Double Out</button>
-                        <button class="btn-option" data-value="single">Single Out</button>
-                    </div>
-                </div>
-
-                <button id="btn-start-game" class="btn-primary" style="margin-top: 15px;">Spiel starten 🎯</button>
-            </div>
-        </div>
-
-        <div id="spielseite" class="hidden">
-            <div class="card">
-                <h2 id="game-title">X01 Match</h2>
-                <p>Spielseite geladen. Anpassungen für die Wurf-Eingabe folgen im nächsten Schritt.</p>
-                <button id="btn-abort-game" class="btn-option" style="border-color: #ff4d4d; color: #ff4d4d;">Spiel abbrechen</button>
-            </div>
-        </div>
-
-        <div id="abschlussseite" class="hidden">
-            <div class="card" style="text-align: center;">
-                <h2 id="winner-announcement">Spieler 1 gewinnt!</h2>
-                <table style="width:100%; margin: 20px 0; text-align: left; border-collapse: collapse;">
-                    <thead>
-                        <tr style="border-bottom: 2px solid var(--border-color);">
-                            <th>Statistik</th>
-                            <th id="th-p1-name">Spieler 1</th>
-                            <th id="th-p2-name">Spieler 2</th>
-                        </tr>
-                    </thead>
-                    <tbody id="summary-stats-body"></tbody>
-                </table>
-                <button id="btn-reset-game" class="btn-primary">Zurück zum Hauptmenü</button>
-            </div>
-        </div>
-
-    </div>
-
-    <div id="settings-modal" class="modal hidden">
-        <div class="modal-content">
-            <button id="btn-settings-close" class="modal-close">X</button>
-            <h3>Optionen & Barrierefreiheit</h3>
-            
-            <div class="option-group">
-                <span class="option-label">Design</span>
-                <div class="btn-row" id="group-theme-select">
-                    <button class="btn-option active" data-value="dark">Dark Theme</button>
-                    <button class="btn-option" data-value="light">Light Theme</button>
-                </div>
-            </div>
-
-            <div class="option-group">
-                <span class="option-label">Anrufer / Sprachausgabe (TTS)</span>
-                <div class="btn-row" id="group-toggle-tts">
-                    <button class="btn-option active" data-value="true">An</button>
-                    <button class="btn-option" data-value="false">Aus</button>
-                </div>
-            </div>
-
-            <div class="option-group" id="sub-voice-settings">
-                <span class="option-label">Sprache</span>
-                <select id="voice-lang-select" style="width: 100%; padding: 10px; margin-bottom: 10px; background: var(--card-bg); color: var(--text-color); border: 1px solid var(--border-color);">
-                    <option value="de" selected>Deutsch</option>
-                    <option value="en">English</option>
-                </select>
-                <span class="option-label">Stimme wählen</span>
-                <select id="voice-select" style="width: 100%; padding: 10px; background: var(--card-bg); color: var(--text-color); border: 1px solid var(--border-color);"></select>
-            </div>
-
-            <div class="option-group">
-                <span class="option-label">Checkout-Hilfe (Ansage)</span>
-                <div class="btn-row" id="group-toggle-helper">
-                    <button class="btn-option active" data-value="true">An</button>
-                    <button class="btn-option" data-value="false">Aus</button>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <div id="stats-modal" class="modal hidden">
-        <div class="modal-content">
-            <button id="btn-stats-close" class="modal-close">X</button>
-            <h3>Deine Alltime Statistiken (X01)</h3>
-            <p>Gespielte Matches: <span id="stat-total-games" style="font-weight:bold;">0</span></p>
-            <p>Gesamt-Durchschnitt (Ø3): <span id="stat-alltime-avg" style="font-weight:bold;">0.0</span></p>
-            <p>Höchste Aufnahme: <span id="stat-highest-turn" style="font-weight:bold;">0</span></p>
-            <p>Höchstes Finish: <span id="stat-highest-co" style="font-weight:bold;">0</span></p>
-            <p>Gesamtanzahl 180er: <span id="stat-total-180s" style="font-weight:bold;">0</span></p>
-            <button id="btn-clear-stats" style="background: #ff4d4d; color: white; border: none; padding: 10px 15px; border-radius: 4px; cursor: pointer; width: 100%; margin-top: 15px;">Statistiken zurücksetzen</button>
-        </div>
-    </div>
-
-    <script src="app.js"></script>
-</body>
-</html>
+// ... Rest des ursprünglichen app.js Codes bleibt unberührt

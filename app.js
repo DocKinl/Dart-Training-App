@@ -34,14 +34,10 @@ let virtualDartData = {
 };
 let virtualSumValue = 0;
 
-// Training Variablen (Finishing, ATC, SoD)
+// Finishing Variablen
 let finAttempts = 0;
 let finTargetScore = 0;
 let finTypeSetting = 'realistic';
-let atcCurrentTarget = 1;
-let sodDartsLeft = 30;
-let sodHits = 0;
-let sodScore = 0;
 
 // System-Optionen
 let isSpeechOutputActive = true;
@@ -212,6 +208,7 @@ function initEventListeners() {
         else document.getElementById('options-bot').classList.add('hidden');
     });
 
+    // NEU: Listener für den Startpunkte-Slider
     const pointsSlider = document.getElementById('input-points-slider');
     if (pointsSlider) {
         pointsSlider.oninput = function() {
@@ -235,6 +232,12 @@ function initEventListeners() {
             let firstTo = Math.ceil(val / 2);
             document.getElementById('sets-slider-label').innerText = `Sets zum Matchgewinn: Best of ${val} (First to ${firstTo})`;
         };
+    }
+
+    // Event Listener für die Sprachänderung hinzufügen
+    const langSelect = document.getElementById('voice-lang-select');
+    if (langSelect) {
+        langSelect.onchange = initVoices;
     }
 
     setupGroupListeners('group-bot-level', (val, btn) => selectOption('group-bot-level', btn));
@@ -348,17 +351,6 @@ function setActiveDartSlot(slotNum) {
     if (activeBox) activeBox.classList.add('active-slot');
 }
 
-function parseSegmentData(field, m) {
-    if (field === "0") return { val: 0, label: "Miss", key: "S0" };
-    if (field === "bull") {
-        if (m === 2) return { val: 50, label: "Bullseye", key: "D25" };
-        return { val: 25, label: "Single Bull", key: "S25" };
-    }
-    let val = parseInt(field);
-    let label = (m === 3 ? "T" : m === 2 ? "D" : "S") + val;
-    return { val: val * m, label: label, key: label };
-}
-
 function inputVirtualDart(field) {
     if (isLockingInput) return;
     document.getElementById('error-message').innerText = "";
@@ -385,6 +377,7 @@ function inputVirtualDart(field) {
         if (activeGlobalMode === 'x01' && inputMode === 'segment') {
             calculateLiveTurnCheckout();
         }
+        
         if (currentActiveDartSlot < 3) {
             setActiveDartSlot(currentActiveDartSlot + 1);
         }
@@ -481,6 +474,7 @@ function calculateLiveTurnCheckout() {
 
     let dartsRemaining = 3 - dartsThrownInTurn;
     let currentRemainingScore = currentScore - (d1 + d2 + d3);
+
     let isEn = currentLanguageCode.startsWith('en');
 
     if (currentRemainingScore === 0) return;
@@ -517,6 +511,7 @@ function calculateLiveTurnCheckout() {
         } else if (outMode === 'single' && currentRemainingScore <= 20) {
             route = ["S" + currentRemainingScore];
         }
+
         if (route && route.length <= dartsRemaining) {
             let text = isEn ? `Remaining ${currentRemainingScore}. Try ` : `${currentRemainingScore} Rest. Versuche `;
             let elements = route.map(r => r.replace('T', 'Triple ').replace('D', 'Doppel ').replace('S', 'Single '));
@@ -527,4 +522,349 @@ function calculateLiveTurnCheckout() {
 }
 
 function generateRandomFinish() {
-    if
+    if (finTypeSetting === 'strict') {
+        let validTargets = [];
+        for (let i = 2; i <= 40; i += 2) validTargets.push(i);
+        validTargets.push(50);
+        return validTargets[Math.floor(Math.random() * validTargets.length)];
+    }
+    let range = getSelectedValue('group-fin-range');
+    let min = 2, max = 40;
+    if (range === 'mid') { min = 2; max = 80; }
+    else if (range === 'high') { min = 2; max = 170; }
+
+    let target;
+    do {
+        target = Math.floor(Math.random() * (max - min + 1)) + min;
+    } while (invalidFinishes.includes(target));
+    return target;
+}
+
+function startGame() {
+    let opponentType = getSelectedValue('group-players');
+    isTwoPlayers = opponentType === "2";
+    isBotMatch = opponentType === "bot";
+    botLevel = getSelectedValue('group-bot-level');
+    inputMode = (activeGlobalMode === 'x01') ? getSelectedValue('group-input-mode') : 'segment';
+
+    document.getElementById('set-input-container').classList.add('hidden');
+    document.getElementById('segment-input-container').classList.add('hidden');
+    document.getElementById('p1-sub').classList.add('hidden');
+    document.getElementById('p1-title').innerText = "Spieler 1";
+    document.getElementById('p2-title').innerText = isBotMatch ? `Computer (${botLevel.toUpperCase()})` : "Spieler 2";
+    document.getElementById('h1-header').innerText = "Verlauf S1";
+    document.getElementById('h2-header').innerText = isBotMatch ? "Verlauf Bot" : "Verlauf S2";
+    document.getElementById('submit-btn').classList.remove('hidden');
+
+    matchStats = {
+        1: { totalPoints: 0, totalDarts: 0, first9Points: 0, first9Darts: 0, turns: 0, c100: 0, c140: 0, c180: 0, highestTurn: 0, highestFinish: 0, shortestLeg: 999 },
+        2: { totalPoints: 0, totalDarts: 0, first9Points: 0, first9Darts: 0, turns: 0, c100: 0, c140: 0, c180: 0, highestTurn: 0, highestFinish: 0, shortestLeg: 999 }
+    };
+    legs = { 1: 0, 2: 0 }; sets = { 1: 0, 2: 0 };
+    legDartsCount = { 1: 0, 2: 0 };
+
+    if (activeGlobalMode === 'x01') {
+        initialPoints = parseInt(document.getElementById('input-points-slider').value);
+        scores[1] = initialPoints; scores[2] = initialPoints;
+
+        let legsValue = parseInt(document.getElementById('input-legs-slider').value);
+        let setsValue = parseInt(document.getElementById('input-sets-slider').value);
+        
+        window.legsRequiredForSet = Math.ceil(legsValue / 2);
+        window.setsRequiredForMatch = Math.ceil(setsValue / 2);
+
+        document.getElementById('game-title').innerText = `${initialPoints}er Match (Best of ${setsValue} Sets, Legs pro Set: Best of ${legsValue})`;
+
+        if (inputMode === 'set') {
+            document.getElementById('set-input-container').classList.remove('hidden');
+            document.getElementById('submit-btn').classList.add('hidden');
+        } else {
+            document.getElementById('segment-input-container').classList.remove('hidden');
+        }
+        document.getElementById('p1-legs-sets').classList.remove('hidden');
+        document.getElementById('p2-legs-sets').classList.remove('hidden');
+        document.getElementById('p1-live-avg').classList.remove('hidden');
+        document.getElementById('p2-live-avg').classList.remove('hidden');
+    } else {
+        document.getElementById('p1-legs-sets').classList.add('hidden');
+        document.getElementById('p2-legs-sets').classList.add('hidden');
+        document.getElementById('p1-live-avg').classList.add('hidden');
+        document.getElementById('p2-live-avg').classList.add('hidden');
+        if (activeGlobalMode === 'fin') {
+            finAttempts = 0;
+            finTypeSetting = getSelectedValue('group-fin-type');
+            finTargetScore = generateRandomFinish();
+            scores[1] = finTargetScore;
+            let typeLabel = finTypeSetting === 'strict' ? 'Exakt' : 'Realistisch';
+            document.getElementById('game-title').innerText = `Finishing (${typeLabel})`;
+            document.getElementById('p1-title').innerText = "Target Finish";
+            document.getElementById('h1-header').innerText = "Würfe-Log";
+            document.getElementById('p1-sub').classList.remove('hidden');
+            document.getElementById('p1-sub').innerText = `Versuch: 1`;
+            document.getElementById('segment-input-container').classList.remove('hidden');
+        } else if (activeGlobalMode === 'atc') {
+            scores[1] = 1; scores[2] = 1;
+            document.getElementById('game-title').innerText = `Around the Clock (ATC)`;
+            document.getElementById('segment-input-container').classList.remove('hidden');
+        } else if (activeGlobalMode === 'sod') {
+            scores[1] = parseInt(getSelectedValue('group-sod-darts'));
+            let targetSegment = document.getElementById('sod-target-select').value;
+            let targetRing = getSelectedValue('group-sod-ring').toUpperCase();
+            document.getElementById('game-title').innerText = `Set of Darts (${targetRing} ${targetSegment.toUpperCase()})`;
+            document.getElementById('segment-input-container').classList.remove('hidden');
+        }
+    }
+
+    histories[1] = []; histories[2] = []; activePlayer = 1; isLockingInput = false;
+    updateScoreboardDisplays();
+
+    document.getElementById('p1-history-list').innerHTML = "";
+    document.getElementById('p2-history-list').innerHTML = "";
+    document.getElementById('p1-card').classList.add('active');
+    document.getElementById('p2-card').classList.remove('active');
+
+    if (isTwoPlayers || isBotMatch) {
+        document.getElementById('p2-card').classList.remove('hidden');
+        document.getElementById('p2-history-box').classList.remove('hidden');
+    } else {
+        document.getElementById('p2-card').classList.add('hidden');
+        document.getElementById('p2-history-box').classList.add('hidden');
+    }
+
+    resetVirtualState();
+    document.getElementById('startseite').classList.add('hidden');
+    document.getElementById('spielseite').classList.remove('hidden');
+    
+    if(activeGlobalMode === 'fin') {
+        let isEn = currentLanguageCode.startsWith('en');
+        speak(isEn ? "Your target is " + finTargetScore : "Dein Ziel ist " + finTargetScore);
+    } else if (activeGlobalMode === 'x01') {
+        triggerCheckoutHelperVoice(scores[1]);
+    }
+}
+
+function updateScoreboardDisplays() {
+    document.getElementById('p1-score').innerText = (activeGlobalMode === 'atc' && scores[1] === 21) ? "BULL" : scores[1];
+    document.getElementById('p2-score').innerText = (activeGlobalMode === 'atc' && scores[2] === 21) ? "BULL" : scores[2];
+    document.getElementById('p1-legs-sets').innerText = `Legs: ${legs[1]} | Sets: ${sets[1]}`;
+    document.getElementById('p2-legs-sets').innerText = `Legs: ${legs[2]} | Sets: ${sets[2]}`;
+
+    let p1SingleAvg = matchStats[1].totalDarts > 0 ? (matchStats[1].totalPoints / matchStats[1].totalDarts).toFixed(1) : "0.0";
+    let p2SingleAvg = matchStats[2].totalDarts > 0 ? (matchStats[2].totalPoints / matchStats[2].totalDarts).toFixed(1) : "0.0";
+    
+    document.getElementById('p1-live-avg').innerText = `Ø ${p1SingleAvg} (${matchStats[1].totalDarts} Darts)`;
+    document.getElementById('p2-live-avg').innerText = `Ø ${p2SingleAvg} (${matchStats[2].totalDarts} Darts)`;
+}
+
+function abortGame() {
+    if (confirm("Spiel wirklich abbrechen?")) {
+        document.getElementById('spielseite').classList.add('hidden');
+        document.getElementById('startseite').classList.remove('hidden');
+    }
+}
+
+function resetVirtualState() {
+    virtualDartData = {
+        1: { val: 0, label: "-", rawField: "", m: 1, key: "" },
+        2: { val: 0, label: "-", rawField: "", m: 1, key: "" },
+        3: { val: 0, label: "-", rawField: "", m: 1, key: "" }
+    };
+    updateDartPreviewDOM();
+    setActiveDartSlot(1);
+    setVirtualMultiplier(1);
+    setVirtualSum(0);
+}
+
+function parseSegmentData(fieldRaw, mult) {
+    if (!fieldRaw || fieldRaw === "") return { val: 0, label: "0", key: "" };
+    let clean = fieldRaw.trim().toLowerCase();
+    if (clean === "0") return { val: 0, label: "0", key: "0" };
+    if (clean === "bull") {
+        if (mult === 2) return { val: 50, label: "D-Bull", key: "d-bull" };
+        return { val: 25, label: "Bull", key: "bull" };
+    }
+    let num = parseInt(clean);
+    if (isNaN(num) || num < 1 || num > 20) return null;
+    if (mult === 3) return { val: num * 3, label: `T${num}`, key: `T${num}` };
+    if (mult === 2) return { val: num * 2, label: `D${num}`, key: `D${num}` };
+    return { val: num, label: `S${num}`, key: `S${num}` };
+}
+
+function handleBustProcess(currentScore, scoredPoints, originalDetails) {
+    let isEn = currentLanguageCode.startsWith('en');
+    let text = isEn ? "Bust!" : "Überworfen!";
+    document.getElementById('error-message').innerText = text;
+    speak(text);
+    
+    if (activeGlobalMode === 'x01') {
+        matchStats[activePlayer].totalDarts += 3;
+        legDartsCount[activePlayer] += 3;
+        matchStats[activePlayer].turns += 1;
+        if (legDartsCount[activePlayer] <= 9) matchStats[activePlayer].first9Darts += 3;
+    }
+
+    if (activeGlobalMode === 'fin') {
+        finAttempts++;
+        addHistoryEntry(1, scoredPoints, finTargetScore, originalDetails, true);
+        scores[1] = finTargetScore;
+        updateScoreboardDisplays();
+        document.getElementById('p1-sub').innerText = `Versuch: ${finAttempts + 1}`;
+    } else {
+        addHistoryEntry(activePlayer, scoredPoints, currentScore, originalDetails, true);
+    }
+
+    isLockingInput = true;
+    setTimeout(() => {
+        document.getElementById('error-message').innerText = "";
+        isLockingInput = false;
+        if (activeGlobalMode !== 'fin') nextPlayer();
+        resetVirtualState();
+    }, 1800);
+}
+
+function checkLiveBustSegment(currentDartIndex) {
+    if (activeGlobalMode !== 'x01' && activeGlobalMode !== 'fin') return false;
+
+    let d1 = virtualDartData[1].val || 0;
+    let d2 = virtualDartData[2].val || 0;
+    let d3 = virtualDartData[3].val || 0;
+
+    let runningSum = d1 + d2 + d3;
+    let currentScore = (activeGlobalMode === 'fin') ? finTargetScore : scores[activePlayer];
+    let remaining = currentScore - runningSum;
+    let modeOut = (activeGlobalMode === 'fin') ? 'double' : outMode;
+
+    if (remaining < 0 || (remaining === 1 && modeOut === 'double')) {
+        handleBustProcess(currentScore, runningSum, `${virtualDartData[1].label}/${virtualDartData[2].label}/${virtualDartData[3].label}`);
+        return true;
+    }
+
+    if (remaining === 0 && modeOut === 'double') {
+        let activeData = virtualDartData[currentDartIndex];
+        if (!activeData.key || (!activeData.key.startsWith('D') && activeData.key !== 'd-bull')) {
+            handleBustProcess(currentScore, runningSum, `${virtualDartData[1].label}/${virtualDartData[2].label}/${virtualDartData[3].label}`);
+            return true;
+        }
+    }
+    return false;
+}
+
+function submitScore() {
+    if (isLockingInput) return;
+    document.getElementById('error-message').innerText = "";
+
+    if (activeGlobalMode === 'x01') executeX01Turn();
+    else if (activeGlobalMode === 'fin') executeFinishingTurn();
+    else if (activeGlobalMode === 'atc') executeATCTurn();
+    else if (activeGlobalMode === 'sod') executeSODTurn();
+}
+
+function executeX01Turn() {
+    let totalScore = 0; let scoreDetails = "";
+    let currentScore = scores[activePlayer];
+    let dartsCountThisTurn = 3;
+
+    if (inputMode === 'set') {
+        totalScore = virtualSumValue;
+        if (impossibleScores.includes(totalScore)) {
+            document.getElementById('error-message').innerText = "Ungültige Score-Kombination!";
+            return;
+        }
+        let remaining = currentScore - totalScore;
+        if (remaining < 0 || (remaining === 1 && outMode === 'double') || (remaining === 0 && outMode === 'double' && totalScore < 2)) {
+            handleBustProcess(currentScore, totalScore, "Summe"); return;
+        }
+        scores[activePlayer] = remaining; scoreDetails = "Aufnahme";
+    } else {
+        let d1 = virtualDartData[1].val || 0;
+        let d2 = virtualDartData[2].val || 0;
+        let d3 = virtualDartData[3].val || 0;
+        totalScore = d1 + d2 + d3;
+        scoreDetails = `${virtualDartData[1].label}/${virtualDartData[2].label}/${virtualDartData[3].label}`;
+        
+        if (virtualDartData[1].label !== "-") dartsCountThisTurn = 1;
+        if (virtualDartData[2].label !== "-") dartsCountThisTurn = 2;
+        if (virtualDartData[3].label !== "-") dartsCountThisTurn = 3;
+
+        let remaining = currentScore - totalScore;
+        let isBust = remaining < 0 || (remaining === 1 && outMode === 'double');
+        
+        if (remaining === 0 && outMode === 'double') {
+            let last = (virtualDartData[3].label !== "-") ? virtualDartData[3] : 
+                       ((virtualDartData[2].label !== "-") ? virtualDartData[2] : virtualDartData[1]);
+            if (!last.key || (!last.key.startsWith('D') && last.key !== 'd-bull')) isBust = true;
+        }
+        
+        if (isBust) { handleBustProcess(currentScore, totalScore, scoreDetails); return; }
+        scores[activePlayer] = remaining;
+    }
+
+    matchStats[activePlayer].totalPoints += totalScore;
+    matchStats[activePlayer].totalDarts += dartsCountThisTurn;
+    legDartsCount[activePlayer] += dartsCountThisTurn;
+    matchStats[activePlayer].turns += 1;
+
+    if(legDartsCount[activePlayer] <= 9) {
+        matchStats[activePlayer].first9Points += totalScore;
+        matchStats[activePlayer].first9Darts += dartsCountThisTurn;
+    }
+    if(totalScore >= 100 && totalScore < 140) matchStats[activePlayer].c100++;
+    if(totalScore >= 140 && totalScore < 180) matchStats[activePlayer].c140++;
+    if(totalScore === 180) matchStats[activePlayer].c180++;
+    if(totalScore > matchStats[activePlayer].highestTurn) matchStats[activePlayer].highestTurn = totalScore;
+
+    updateScoreboardDisplays();
+    addHistoryEntry(activePlayer, totalScore, scores[activePlayer], scoreDetails, false);
+    speakTurnResult(totalScore, scores[activePlayer]);
+
+    if (scores[activePlayer] === 0) {
+        if(totalScore > matchStats[activePlayer].highestFinish) matchStats[activePlayer].highestFinish = totalScore;
+        if(legDartsCount[activePlayer] < matchStats[activePlayer].shortestLeg) matchStats[activePlayer].shortestLeg = legDartsCount[activePlayer];
+        handleLegOrSetWin();
+        return;
+    }
+    nextPlayer(); resetVirtualState();
+}
+
+function handleLegOrSetWin() {
+    let winner = activePlayer;
+    let isEn = currentLanguageCode.startsWith('en');
+    
+    legs[winner]++;
+    let requiredLegsToWinSet = window.legsRequiredForSet || 3;
+    
+    if (legs[winner] >= requiredLegsToWinSet) {
+        legs[1] = 0; legs[2] = 0; 
+        sets[winner]++;
+        
+        let requiredSetsToWinMatch = window.setsRequiredForMatch || 1;
+        if (sets[winner] >= requiredSetsToWinMatch) {
+            showVictory(winner); return;
+        } else {
+            speak(isEn ? "Set won!" : "Set gewonnen!");
+            alert(isEn ? `Player ${winner} won the set!` : `Spieler ${winner} gewinnt den Satz!`);
+        }
+    } else {
+        speak(isEn ? "Leg finished!" : "Leg beendet!");
+    }
+    
+    scores[1] = initialPoints; scores[2] = initialPoints;
+    legDartsCount[1] = 0; legDartsCount[2] = 0;
+    histories[1] = []; histories[2] = [];
+    document.getElementById('p1-history-list').innerHTML = "";
+    document.getElementById('p2-history-list').innerHTML = "";
+    updateScoreboardDisplays();
+    
+    activePlayer = (winner === 1) ? 2 : 1; 
+    resetVirtualState();
+    triggerCheckoutHelperVoice(scores[activePlayer]);
+
+    if(isBotMatch && activePlayer === 2) {
+        setTimeout(executeBotTurn, 1000);
+    }
+}
+
+function executeBotTurn() {
+    if(!isBotMatch || activePlayer !== 2 || isLockingInput) return;
+    
+    let targetAvg = 35; let tripleChance

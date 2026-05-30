@@ -64,6 +64,7 @@
         .player-card.active { border-color: var(--accent-color); background: var(--player-active-bg); }
         .score-display { font-size: 42px; font-weight: bold; margin: 5px 0; color: var(--gold-text); }
         .legs-sets-display { font-size: 13px; opacity: 0.8; margin-top: 4px; font-weight: bold; }
+        .live-avg-display { font-size: 12px; color: var(--gold-text); opacity: 0.9; margin-top: 2px; font-style: italic; }
         .history-table { width: 100%; border-collapse: collapse; margin-top: 5px; font-size: 12px; }
         .history-table th, .history-table td { border-bottom: 1px solid var(--border-color); padding: 4px; text-align: center; }
         .history-table th { color: var(--text-color); opacity: 0.5; }
@@ -232,11 +233,13 @@
                 <div id="p1-sub" class="hidden" style="font-size:11px; opacity:0.6; margin-top: 2px;"></div>
                 <div class="score-display" id="p1-score">501</div>
                 <div class="legs-sets-display" id="p1-legs-sets">Legs: 0 | Sets: 0</div>
+                <div class="live-avg-display" id="p1-live-avg">Ø 0.0 (0 Darts)</div>
             </div>
             <div class="player-card hidden" id="p2-card">
                 <h3 id="p2-title" style="margin:0; font-size: 16px;">Spieler 2</h3>
                 <div class="score-display" id="p2-score">501</div>
                 <div class="legs-sets-display" id="p2-legs-sets">Legs: 0 | Sets: 0</div>
+                <div class="live-avg-display" id="p2-live-avg">Ø 0.0 (0 Darts)</div>
             </div>
         </div>
 
@@ -327,14 +330,14 @@
             <div style="flex:1;">
                 <h4 id="h1-header" style="margin:5px 0; opacity:0.6; font-size:13px;">Verlauf S1</h4>
                 <table class="history-table">
-                    <thead><tr><th>Darts</th><th>Score</th><th>Ø3</th><th>Rest</th><th>Details</th></tr></thead>
+                    <thead><tr><th>Darts</th><th>Score</th><th>Ø1</th><th>Rest</th><th>Details</th></tr></thead>
                     <tbody id="p1-history-list"></tbody>
                 </table>
             </div>
             <div style="flex:1;" id="p2-history-box" class="hidden">
                 <h4 id="h2-header" style="margin:5px 0; opacity:0.6; font-size:13px;">Verlauf S2</h4>
                 <table class="history-table">
-                    <thead><tr><th>Darts</th><th>Score</th><th>Ø3</th><th>Rest</th><th>Details</th></tr></thead>
+                    <thead><tr><th>Darts</th><th>Score</th><th>Ø1</th><th>Rest</th><th>Details</th></tr></thead>
                     <tbody id="p2-history-list"></tbody>
                 </table>
             </div>
@@ -412,7 +415,7 @@
             <table class="stats-table">
                 <tbody>
                     <tr><td>Spiele absolviert</td><td id="stat-total-games">0</td></tr>
-                    <tr><td>Gesamt 3-Dart-Ø</td><td id="stat-alltime-avg">0.0</td></tr>
+                    <tr><td>Gesamt Einzeldart-Ø</td><td id="stat-alltime-avg">0.0</td></tr>
                     <tr><td>Höchste Aufnahme</td><td id="stat-highest-turn">0</td></tr>
                     <tr><td>Höchstes Checkout</td><td id="stat-highest-co">0</td></tr>
                     <tr><td>Gesamte 180er</td><td id="stat-total-180s">0</td></tr>

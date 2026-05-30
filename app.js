@@ -17,7 +17,7 @@ let histories = { 1: [], 2: [] };
 let activePlayer = 1;
 let isLockingInput = false;
 
-// Tracker für Statistiken
+// Tracker für Statistiken (Echte Gesamtwerte)
 let matchStats = {
     1: { totalPoints: 0, totalDarts: 0, first9Points: 0, first9Darts: 0, turns: 0, c100: 0, c140: 0, c180: 0, highestTurn: 0, highestFinish: 0, shortestLeg: 999 },
     2: { totalPoints: 0, totalDarts: 0, first9Points: 0, first9Darts: 0, turns: 0, c100: 0, c140: 0, c180: 0, highestTurn: 0, highestFinish: 0, shortestLeg: 999 }
@@ -307,6 +307,7 @@ function changeGameMode(mode, element) {
     document.getElementById('wrapper-players').classList.remove('hidden');
     document.getElementById('options-bot').classList.add('hidden');
 
+    // WICHTIG: Der Schieberegler-Container bleibt nun strukturell unberührt und ist fest definiert!
     if (mode === 'x01') {
         document.getElementById('options-x01').classList.remove('hidden');
         if(getSelectedValue('group-players') === 'bot') document.getElementById('options-bot').classList.remove('hidden');
@@ -480,7 +481,6 @@ function startGame() {
         initialPoints = parseInt(getSelectedValue('group-points'));
         scores[1] = initialPoints; scores[2] = initialPoints;
 
-        // Direktes Auslesen der Schieberegler
         let legsValue = parseInt(document.getElementById('input-legs-slider').value);
         let setsValue = parseInt(document.getElementById('input-sets-slider').value);
         
@@ -497,9 +497,13 @@ function startGame() {
         }
         document.getElementById('p1-legs-sets').classList.remove('hidden');
         document.getElementById('p2-legs-sets').classList.remove('hidden');
+        document.getElementById('p1-live-avg').classList.remove('hidden');
+        document.getElementById('p2-live-avg').classList.remove('hidden');
     } else {
         document.getElementById('p1-legs-sets').classList.add('hidden');
         document.getElementById('p2-legs-sets').classList.add('hidden');
+        document.getElementById('p1-live-avg').classList.add('hidden');
+        document.getElementById('p2-live-avg').classList.add('hidden');
         if (activeGlobalMode === 'fin') {
             finAttempts = 0;
             finTypeSetting = getSelectedValue('group-fin-type');
@@ -558,6 +562,13 @@ function updateScoreboardDisplays() {
     document.getElementById('p2-score').innerText = (activeGlobalMode === 'atc' && scores[2] === 21) ? "BULL" : scores[2];
     document.getElementById('p1-legs-sets').innerText = `Legs: ${legs[1]} | Sets: ${sets[1]}`;
     document.getElementById('p2-legs-sets').innerText = `Legs: ${legs[2]} | Sets: ${sets[2]}`;
+
+    // NEU: Live-Anzeige des echten Einzeldart-Averages und der absoluten Dart-Anzahl auf den Cards
+    let p1SingleAvg = matchStats[1].totalDarts > 0 ? (matchStats[1].totalPoints / matchStats[1].totalDarts).toFixed(1) : "0.0";
+    let p2SingleAvg = matchStats[2].totalDarts > 0 ? (matchStats[2].totalPoints / matchStats[2].totalDarts).toFixed(1) : "0.0";
+    
+    document.getElementById('p1-live-avg').innerText = `Ø ${p1SingleAvg} (${matchStats[1].totalDarts} Darts)`;
+    document.getElementById('p2-live-avg').innerText = `Ø ${p2SingleAvg} (${matchStats[2].totalDarts} Darts)`;
 }
 
 function abortGame() {
@@ -600,6 +611,7 @@ function handleBustProcess(currentScore, scoredPoints, originalDetails) {
     document.getElementById('error-message').innerText = text;
     speak(text);
     
+    // Mathematisch korrekt: Im Falle eines Busts zählen 3 Darts mehr, aber 0 Punkte für den Average
     if (activeGlobalMode === 'x01') {
         matchStats[activePlayer].totalDarts += 3;
         legDartsCount[activePlayer] += 3;
@@ -968,31 +980,42 @@ function addHistoryEntry(player, score, rest, details, isBust) {
     if(!tbody) return;
     tbody.innerHTML = "";
     
-    let totalValidPoints = 0; let validLegsCount = 0;
+    let runningPointsSum = 0;
+    let runningDartsSum = 0;
 
-    histories[player].forEach((item, index) => {
-        let dartsThrown = (histories[player].length - index) * 3;
-        let numericalScore = 0;
-        if (!item.isBust && typeof item.score === 'number') numericalScore = item.score;
+    // Wir laufen rückwärts durch die Historie, um die kumulierten Werte korrekt zu errechnen
+    for (let i = histories[player].length - 1; i >= 0; i--) {
+        let item = histories[player][i];
         
-        if (activeGlobalMode === 'x01' || activeGlobalMode === 'fin') {
-            totalValidPoints += numericalScore; validLegsCount++;
+        // Jeder Tabelleneintrag (jede Aufnahme) entspricht standardmäßig 3 geworfenen Darts
+        runningDartsSum += 3;
+        
+        // Nur wenn es kein Überwerfen war, zählen die erzielten Punkte auf das Konto ein
+        if (!item.isBust && typeof item.score === 'number') {
+            runningPointsSum += item.score;
         }
-
-        let currentAvg = "-";
-        if (validLegsCount > 0 && (activeGlobalMode === 'x01' || activeGlobalMode === 'fin')) {
-            currentAvg = (totalValidPoints / validLegsCount).toFixed(1);
+        
+        // ANPASSUNG: Hier wird der exakte Einzeldart-Average (Ø1) berechnet (Punkte geteilt durch Darts)
+        let currentSingleAvg = "-";
+        if (runningDartsSum > 0 && (activeGlobalMode === 'x01' || activeGlobalMode === 'fin')) {
+            currentSingleAvg = (runningPointsSum / runningDartsSum).toFixed(1);
         } else if (activeGlobalMode === 'sod' || activeGlobalMode === 'atc') {
             let cumulatedHits = 0;
-            for(let j = histories[player].length - 1; j >= index; j--) {
+            for(let j = histories[player].length - 1; j >= i; j--) {
                 let parsedHit = parseInt(histories[player][j].score);
                 if (!isNaN(parsedHit)) cumulatedHits += parsedHit;
             }
-            currentAvg = cumulatedHits.toString();
+            currentSingleAvg = cumulatedHits.toString();
         }
 
+        item.calculatedSingleAvg = currentSingleAvg;
+    }
+
+    // Rendern der Tabelle (Neueste Aufnahmen oben)
+    histories[player].forEach((item, index) => {
+        let dartsThrown = (histories[player].length - index) * 3;
         let displayScore = item.isBust ? `Bust` : item.score;
-        tbody.innerHTML += `<tr><td>${dartsThrown}</td><td>${displayScore}</td><td>${currentAvg}</td><td>${item.rest}</td><td>${item.details}</td></tr>`;
+        tbody.innerHTML += `<tr><td>${dartsThrown}</td><td>${displayScore}</td><td>${item.calculatedSingleAvg}</td><td>${item.rest}</td><td>${item.details}</td></tr>`;
     });
 }
 
@@ -1007,19 +1030,20 @@ function showVictory(winnerId) {
     document.getElementById('th-p1-name').innerText = p1Name;
     document.getElementById('th-p2-name').innerText = p2Name;
 
-    let p1Avg = matchStats[1].totalDarts > 0 ? ((matchStats[1].totalPoints / matchStats[1].totalDarts) * 3).toFixed(1) : "0.0";
-    let p2Avg = matchStats[2].totalDarts > 0 ? ((matchStats[2].totalPoints / matchStats[2].totalDarts) * 3).toFixed(1) : "0.0";
+    // Errechnung des finalen Einzeldart-Averages für die Endabrechnung
+    let p1Avg = matchStats[1].totalDarts > 0 ? (matchStats[1].totalPoints / matchStats[1].totalDarts).toFixed(1) : "0.0";
+    let p2Avg = matchStats[2].totalDarts > 0 ? (matchStats[2].totalPoints / matchStats[2].totalDarts).toFixed(1) : "0.0";
     
-    let p1F9 = matchStats[1].first9Darts > 0 ? ((matchStats[1].first9Points / matchStats[1].first9Darts) * 3).toFixed(1) : "0.0";
-    let p2F9 = matchStats[2].first9Darts > 0 ? ((matchStats[2].first9Points / matchStats[2].first9Darts) * 3).toFixed(1) : "0.0";
+    let p1F9 = matchStats[1].first9Darts > 0 ? (matchStats[1].first9Points / matchStats[1].first9Darts).toFixed(1) : "0.0";
+    let p2F9 = matchStats[2].first9Darts > 0 ? (matchStats[2].first9Points / matchStats[2].first9Darts).toFixed(1) : "0.0";
 
     let p1Shortest = matchStats[1].shortestLeg === 999 ? "-" : `${matchStats[1].shortestLeg} Darts`;
     let p2Shortest = matchStats[2].shortestLeg === 999 ? "-" : `${matchStats[2].shortestLeg} Darts`;
 
     const summaryBody = document.getElementById('summary-stats-body');
     summaryBody.innerHTML = `
-        <tr><td>3-Dart-Average</td><td><b>${p1Avg}</b></td><td><b>${p2Avg}</b></td></tr>
-        <tr><td>First 9 Average</td><td>${p1F9}</td><td>${p2F9}</td></tr>
+        <tr><td>Einzeldart-Average (Ø1)</td><td><b>${p1Avg}</b></td><td><b>${p2Avg}</b></td></tr>
+        <tr><td>First 9 Average (Ø1)</td><td>${p1F9}</td><td>${p2F9}</td></tr>
         <tr><td>Höchste Aufnahme</td><td>${matchStats[1].highestTurn}</td><td>${matchStats[2].highestTurn}</td></tr>
         <tr><td>Höchstes Checkout</td><td>${matchStats[1].highestFinish}</td><td>${matchStats[2].highestFinish}</td></tr>
         <tr><td>Shortest Leg</td><td>${p1Shortest}</td><td>${p2Shortest}</td></tr>

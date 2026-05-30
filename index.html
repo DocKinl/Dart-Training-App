@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>DocKinl Darts Tracker</title>
     <style>
-        /* Grundlegendes Styling für ein sauberes, scannbares Dashboard */
         :root {
             --bg-color: #121212;
             --card-bg: #1e1e1e;
@@ -13,6 +12,7 @@
             --accent-color: #00adb5;
             --active-color: #393e46;
             --border-color: #333333;
+            --preview-active: #2a363b;
         }
 
         .light-theme {
@@ -22,6 +22,7 @@
             --accent-color: #007cc7;
             --active-color: #eeeeee;
             --border-color: #cccccc;
+            --preview-active: #e8f4f8;
         }
 
         body {
@@ -42,7 +43,7 @@
         }
 
         .container {
-            max-width: 800px;
+            max-width: 1000px;
             margin: 30px auto;
             padding: 0 20px;
         }
@@ -56,7 +57,7 @@
             box-shadow: 0 4px 6px rgba(0,0,0,0.1);
         }
 
-        h2 {
+        h2, h3 {
             margin-top: 0;
             border-bottom: 2px solid var(--accent-color);
             padding-bottom: 8px;
@@ -132,7 +133,110 @@
             display: none !important;
         }
 
-        /* Modal-Styling */
+        /* Spiel-Layout */
+        .game-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+
+        @media (max-width: 768px) {
+            .game-grid { grid-template-columns: 1fr; }
+        }
+
+        .player-card {
+            background-color: var(--card-bg);
+            border: 2px solid var(--border-color);
+            border-radius: 8px;
+            padding: 20px;
+            text-align: center;
+            transition: border-color 0.3s;
+        }
+
+        .player-card.active {
+            border-color: var(--accent-color);
+            box-shadow: 0 0 15px rgba(0, 173, 181, 0.2);
+        }
+
+        .score-display {
+            font-size: 3.5em;
+            font-weight: bold;
+            margin: 15px 0;
+            font-family: monospace;
+        }
+
+        /* Keyboard */
+        .keyboard-grid {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 8px;
+            margin-top: 15px;
+        }
+
+        .numkey, .actionkey, .sumkey, .shortcut {
+            background-color: var(--active-color);
+            color: var(--text-color);
+            border: 1px solid var(--border-color);
+            padding: 15px 5px;
+            font-size: 1.1em;
+            font-weight: bold;
+            border-radius: 4px;
+            cursor: pointer;
+            text-align: center;
+        }
+
+        .numkey:active, .actionkey:active {
+            background-color: var(--accent-color);
+        }
+
+        .preview-row {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+
+        .preview-box {
+            flex: 1;
+            background-color: var(--active-color);
+            padding: 12px;
+            text-align: center;
+            border-radius: 4px;
+            font-weight: bold;
+            border: 2px solid transparent;
+            cursor: pointer;
+        }
+
+        .preview-box.active-slot {
+            border-color: var(--accent-color);
+            background-color: var(--preview-active);
+        }
+
+        /* Verlaufs-Tabellen */
+        .history-box {
+            max-height: 200px;
+            overflow-y: auto;
+            border: 1px solid var(--border-color);
+            margin-top: 15px;
+            border-radius: 4px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            text-align: left;
+            font-size: 0.9em;
+        }
+
+        th, td {
+            padding: 8px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        tr.bust-row {
+            color: #ff4d4d;
+            text-decoration: line-through;
+        }
+
         .modal {
             position: fixed;
             top: 0; left: 0; width: 100%; height: 100%;
@@ -164,7 +268,7 @@
 <body>
 
     <header>
-        <div style="font-size: 1.4em; font-weight: bold;">DocKinl Darts</div>
+        <div style="font-size: 1.4em; font-weight: bold;">DocKinl Darts Tracker</div>
         <div>
             <button class="btn-option btn-settings-open" style="padding: 8px 15px;">⚙ Einstellungen</button>
             <button id="btn-open-stats" class="btn-option" style="padding: 8px 15px;">📊 Alltime Stats</button>
@@ -175,10 +279,18 @@
         
         <div id="startseite">
             <div class="card">
-                <h2>X01 Match Konfiguration</h2>
-                
-                <div class="option-group">
-                    <span class="option-label">Spielmodus</span>
+                <h2>Spielmodus wählen</h2>
+                <div class="option-group" id="group-game-mode">
+                    <div class="btn-row">
+                        <button class="btn-option active" data-value="x01">X01 Match</button>
+                        <button class="btn-option" data-value="fin">Finishing</button>
+                        <button class="btn-option" data-value="atc">Around the Clock</button>
+                        <button class="btn-option" data-value="sod">Set of Darts</button>
+                    </div>
+                </div>
+
+                <div class="option-group" id="wrapper-players">
+                    <span class="option-label">Gegner</span>
                     <div class="btn-row" id="group-players">
                         <button class="btn-option active" data-value="1">Alleine spielen</button>
                         <button class="btn-option" data-value="bot">Gegen Bot spielen</button>
@@ -196,36 +308,77 @@
                     </div>
                 </div>
 
-                <div class="option-group" id="options-x01">
+                <div id="options-x01" class="option-group">
                     <div class="slider-box">
                         <span class="option-label" id="points-slider-label">Startpunkte: 501</span>
                         <input type="range" min="101" max="501" step="100" value="501" class="slider" id="input-points-slider">
                     </div>
-
                     <div class="slider-box">
                         <span class="option-label" id="legs-slider-label">Legs pro Set: Best of 5</span>
                         <input type="range" min="1" max="11" step="2" value="5" class="slider" id="input-legs-slider">
                     </div>
-
                     <div class="slider-box">
                         <span class="option-label" id="sets-slider-label">Sets zum Matchgewinn: Best of 3</span>
                         <input type="range" min="1" max="9" step="2" value="3" class="slider" id="input-sets-slider">
                     </div>
-                </div>
-
-                <div class="option-group">
-                    <span class="option-label">Eingabe-Methode</span>
-                    <div class="btn-row" id="group-input-mode">
-                        <button class="btn-option active" data-value="segment">Darts einzeln</button>
-                        <button class="btn-option" data-value="set">Aufnahme (Gesamtsumme)</button>
+                    <div style="margin-top: 15px;">
+                        <span class="option-label">Eingabe-Methode</span>
+                        <div class="btn-row" id="group-input-mode">
+                            <button class="btn-option active" data-value="segment">Darts einzeln</button>
+                            <button class="btn-option" data-value="set">Aufnahme (Gesamtsumme)</button>
+                        </div>
+                    </div>
+                    <div style="margin-top: 15px;">
+                        <span class="option-label">Out-Modus</span>
+                        <div class="btn-row" id="group-out">
+                            <button class="btn-option active" data-value="double">Double Out</button>
+                            <button class="btn-option" data-value="single">Single Out</button>
+                        </div>
                     </div>
                 </div>
 
-                <div class="option-group">
-                    <span class="option-label">Out-Modus</span>
-                    <div class="btn-row" id="group-out">
-                        <button class="btn-option active" data-value="double">Double Out</button>
-                        <button class="btn-option" data-value="single">Single Out</button>
+                <div id="options-fin" class="option-group hidden">
+                    <span class="option-label">Generierungstyp</span>
+                    <div class="btn-row" id="group-fin-type">
+                        <button class="btn-option active" data-value="realistic">Realistische Finishes (2-170)</button>
+                        <button class="btn-option" data-value="strict">Exakte Doppel-Felder (D1-D20, Bull)</button>
+                    </div>
+                    <div class="slider-box" id="wrapper-fin-range" style="margin-top:15px;">
+                        <span class="option-label">Finish-Bereich</span>
+                        <div class="btn-row" id="group-fin-range">
+                            <button class="btn-option active" data-value="low">Low (2 - 40)</button>
+                            <button class="btn-option" data-value="mid">Mid (2 - 80)</button>
+                            <button class="btn-option" data-value="high">High (2 - 170)</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="options-atc" class="option-group hidden">
+                    <span class="option-label">Treffer-Wertung</span>
+                    <div class="btn-row" id="group-atc-bonus">
+                        <button class="btn-option active" data-value="standard">Standard (Immer +1 Segment)</button>
+                        <button class="btn-option" data-value="bonus">Bonus (Doppel = 2 Felder, Triple = 3)</button>
+                    </div>
+                </div>
+
+                <div id="options-sod" class="option-group hidden">
+                    <div class="btn-row" style="margin-bottom: 15px;">
+                        <div style="flex:1;">
+                            <span class="option-label">Ziel-Segment</span>
+                            <select id="sod-target-select" style="width:100%; padding:12px; background:var(--card-bg); color:var(--text-color); border:1px solid var(--border-color); border-radius:6px;"></select>
+                        </div>
+                    </div>
+                    <span class="option-label">Anzahl Pfeile im Set</span>
+                    <div class="btn-row" id="group-sod-darts" style="margin-bottom: 15px;">
+                        <button class="btn-option active" data-value="30">30 Darts</button>
+                        <button class="btn-option" data-value="60">60 Darts</button>
+                        <button class="btn-option" data-value="100">100 Darts</button>
+                    </div>
+                    <span class="option-label">Gewünschter Ring</span>
+                    <div class="btn-row" id="group-sod-ring">
+                        <button class="btn-option active" data-value="single">Single-Feld</button>
+                        <button class="btn-option" data-value="double">Doppel-Ring</button>
+                        <button class="btn-option" data-value="treble">Triple-Ring</button>
                     </div>
                 </div>
 
@@ -234,16 +387,133 @@
         </div>
 
         <div id="spielseite" class="hidden">
-            <div class="card">
-                <h2 id="game-title">X01 Match</h2>
-                <p>Spielseite geladen. Anpassungen für die Wurf-Eingabe folgen im nächsten Schritt.</p>
-                <button id="btn-abort-game" class="btn-option" style="border-color: #ff4d4d; color: #ff4d4d;">Spiel abbrechen</button>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                <h3 id="game-title" style="border:none; margin:0; padding:0;">X01 Match</h3>
+                <button id="btn-abort-game" class="btn-option" style="flex:none; max-width:150px; padding:8px; border-color:#ff4d4d; color:#ff4d4d;">Abbrechen</button>
+            </div>
+
+            <div class="game-grid">
+                <div class="player-card active" id="p1-card">
+                    <div id="p1-title" style="font-size:1.3em; font-weight:bold;">Spieler 1</div>
+                    <div id="p1-sub" class="hidden" style="font-size:0.9em; color:var(--accent-color); font-weight:bold;"></div>
+                    <div class="score-display" id="p1-score">501</div>
+                    <div id="p1-legs-sets" style="font-size:0.9em; opacity:0.8;">Legs: 0 | Sets: 0</div>
+                    <div id="p1-live-avg" style="font-size:0.9em; margin-top:5px; font-weight:bold; color:var(--accent-color);">Ø 0.0 (0 Darts)</div>
+                </div>
+                <div class="player-card hidden" id="p2-card">
+                    <div id="p2-title" style="font-size:1.3em; font-weight:bold;">Spieler 2</div>
+                    <div class="score-display" id="p2-score">501</div>
+                    <div id="p2-legs-sets" style="font-size:0.9em; opacity:0.8;">Legs: 0 | Sets: 0</div>
+                    <div id="p2-live-avg" style="font-size:0.9em; margin-top:5px; font-weight:bold; color:var(--accent-color);">Ø 0.0 (0 Darts)</div>
+                </div>
+            </div>
+
+            <div id="error-message" style="color:#ff4d4d; text-align:center; font-weight:bold; margin-top:15px; height:20px;"></div>
+
+            <div class="card" style="margin-top:20px; padding:20px;">
+                
+                <div id="segment-input-container">
+                    <div class="preview-row">
+                        <div class="preview-box active-slot" id="box-d1">Dart 1: -</div>
+                        <div class="preview-box" id="box-d2">Dart 2: -</div>
+                        <div class="preview-box" id="box-d3">Dart 3: -</div>
+                    </div>
+
+                    <div class="btn-row" style="margin-bottom:12px;">
+                        <button class="btn-option active" id="vmult-1" style="padding:10px;">Single</button>
+                        <button class="btn-option" id="vmult-2" style="padding:10px; border-color:#e29724; color: #e29724;">Double</button>
+                        <button class="btn-option" id="vmult-3" style="padding:10px; border-color:#e23e24; color: #e23e24;">Triple</button>
+                    </div>
+
+                    <div class="keyboard-grid">
+                        <button class="numkey" data-val="20">20</button>
+                        <button class="numkey" data-val="19">19</button>
+                        <button class="numkey" data-val="18">18</button>
+                        <button class="numkey" data-val="17">17</button>
+                        <button class="numkey" data-val="16">16</button>
+                        <button class="numkey" data-val="15">15</button>
+                        <button class="numkey" data-val="14">14</button>
+                        <button class="numkey" data-val="13">13</button>
+                        <button class="numkey" data-val="12">12</button>
+                        <button class="numkey" data-val="11">11</button>
+                        <button class="numkey" data-val="10">10</button>
+                        <button class="numkey" data-val="9">9</button>
+                        <button class="numkey" data-val="8">8</button>
+                        <button class="numkey" data-val="7">7</button>
+                        <button class="numkey" data-val="6">6</button>
+                        <button class="numkey" data-val="5">5</button>
+                        <button class="numkey" data-val="4">4</button>
+                        <button class="numkey" data-val="3">3</button>
+                        <button class="numkey" data-val="2">2</button>
+                        <button class="numkey" data-val="1">1</button>
+                        <button class="actionkey" style="background-color:#555;" data-val="0">Miss (0)</button>
+                        <button class="actionkey" style="grid-column: span 2; background-color:#cc7a00;" data-val="bull">BULL</button>
+                        <button class="actionkey" style="grid-column: span 2; background-color:#888;" id="vkey-clear-segments">Löschen</button>
+                    </div>
+                </div>
+
+                <div id="set-input-container" class="hidden">
+                    <div style="display: flex; justify-content: space-between; align-items: center; background: var(--active-color); padding: 15px; border-radius: 6px; margin-bottom: 15px;">
+                        <span style="font-weight: bold;">Eingegebene Summe:</span>
+                        <span id="virtual-sum-display" style="font-size: 2em; font-family: monospace; font-weight: bold; color: var(--accent-color);">0</span>
+                    </div>
+
+                    <div style="display:grid; grid-template-columns: 1fr 3fr; gap:15px;">
+                        <div class="keyboard-grid-shortcuts" style="display:flex; flex-direction:column; gap:8px;">
+                            <button class="shortcut" data-sum="26">26</button>
+                            <button class="shortcut" data-sum="41">41</button>
+                            <button class="shortcut" data-sum="45">45</button>
+                            <button class="shortcut" data-sum="60">60</button>
+                            <button class="shortcut" data-sum="85">85</button>
+                            <button class="shortcut" data-sum="100">100</button>
+                            <button class="shortcut" data-sum="140">140</button>
+                            <button class="shortcut" data-sum="180">180</button>
+                        </div>
+                        <div class="keyboard-grid-sum" style="display:grid; grid-template-columns: repeat(3, 1fr); gap:8px;">
+                            <button class="sumkey" data-num="1">1</button>
+                            <button class="sumkey" data-num="2">2</button>
+                            <button class="sumkey" data-num="3">3</button>
+                            <button class="sumkey" data-num="4">4</button>
+                            <button class="sumkey" data-num="5">5</button>
+                            <button class="sumkey" data-num="6">6</button>
+                            <button class="sumkey" data-num="7">7</button>
+                            <button class="sumkey" data-num="8">8</button>
+                            <button class="sumkey" data-num="9">9</button>
+                            <button class="actionkey" id="vkey-clear-sum" style="background-color:#ff4d4d;">C</button>
+                            <button class="sumkey" data-num="0">0</button>
+                            <button class="actionkey" id="vkey-submit-sum" style="background-color:var(--accent-color);">OK</button>
+                        </div>
+                    </div>
+                </div>
+
+                <button id="submit-btn" class="btn-primary" style="margin-top:20px;">Aufnahme bestätigen</button>
+            </div>
+
+            <div class="game-grid" style="margin-top:25px;">
+                <div>
+                    <span class="option-label" id="h1-header">Verlauf S1</span>
+                    <div class="history-box">
+                        <table>
+                            <thead><tr><th>Darts</th><th>Score</th><th>Rest</th><th>Kombination</th></tr></thead>
+                            <tbody id="p1-history-list"></tbody>
+                        </table>
+                    </div>
+                </div>
+                <div id="p2-history-box" class="hidden">
+                    <span class="option-label" id="h2-header">Verlauf S2</span>
+                    <div class="history-box">
+                        <table>
+                            <thead><tr><th>Darts</th><th>Score</th><th>Rest</th><th>Kombination</th></tr></thead>
+                            <tbody id="p2-history-list"></tbody>
+                        </table>
+                    </div>
+                </div>
             </div>
         </div>
 
         <div id="abschlussseite" class="hidden">
             <div class="card" style="text-align: center;">
-                <h2 id="winner-announcement">Spieler 1 gewinnt!</h2>
+                <h2 id="winner-announcement">Spieler 1 gewinnt das Match!</h2>
                 <table style="width:100%; margin: 20px 0; text-align: left; border-collapse: collapse;">
                     <thead>
                         <tr style="border-bottom: 2px solid var(--border-color);">
@@ -254,7 +524,7 @@
                     </thead>
                     <tbody id="summary-stats-body"></tbody>
                 </table>
-                <button id="btn-reset-game" class="btn-primary">Zurück zum Hauptmenü</button>
+                <button id="btn-reset-game" class="btn-primary">Zurück zur Startseite</button>
             </div>
         </div>
 
@@ -274,7 +544,7 @@
             </div>
 
             <div class="option-group">
-                <span class="option-label">Anrufer / Sprachausgabe (TTS)</span>
+                <span class="option-label">Caller Sprachausgabe (TTS)</span>
                 <div class="btn-row" id="group-toggle-tts">
                     <button class="btn-option active" data-value="true">An</button>
                     <button class="btn-option" data-value="false">Aus</button>

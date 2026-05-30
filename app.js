@@ -208,7 +208,6 @@ function initEventListeners() {
         else document.getElementById('options-bot').classList.add('hidden');
     });
 
-    // NEU: Listener für den Startpunkte-Slider
     const pointsSlider = document.getElementById('input-points-slider');
     if (pointsSlider) {
         pointsSlider.oninput = function() {
@@ -368,7 +367,6 @@ function inputVirtualDart(field) {
     let wasBust = checkLiveBustSegment(currentActiveDartSlot);
 
     if (!wasBust) {
-        // NEU: Nach jedem gültigen Dart den Checkout-Status im aktuellen Turn neu ermitteln
         if (activeGlobalMode === 'x01' && inputMode === 'segment') {
             calculateLiveTurnCheckout();
         }
@@ -454,7 +452,6 @@ function triggerCheckoutHelperVoice(score) {
     }
 }
 
-// NEU: Live-Check nach jedem geworfenen Pfeil einer Aufnahme
 function calculateLiveTurnCheckout() {
     if (!isCheckoutHelperActive || !isSpeechOutputActive) return;
 
@@ -463,7 +460,6 @@ function calculateLiveTurnCheckout() {
     let d2 = virtualDartData[2].val || 0;
     let d3 = virtualDartData[3].val || 0;
 
-    // Wie viele Darts wurden in DIESER Aufnahme schon fest eingegeben?
     let dartsThrownInTurn = 0;
     if (virtualDartData[1].label !== "-") dartsThrownInTurn++;
     if (virtualDartData[2].label !== "-") dartsThrownInTurn++;
@@ -474,13 +470,16 @@ function calculateLiveTurnCheckout() {
 
     let isEn = currentLanguageCode.startsWith('en');
 
-    // Wenn das Leg bereits vorbei ist, greift die normale Leg-Win-Logik
     if (currentRemainingScore === 0) return;
 
-    // Validierung, ob mit verbleibenden Darts überhaupt noch ein Finish möglich ist
+    // KORREKTUR: Wenn die Gesamtpunktzahl vor Beginn ODER die Restpunktzahl JETZT über 170 liegt, komplett schweigen.
+    if (currentScore > 170 && currentRemainingScore > 170) {
+        return; 
+    }
+
     let maxPossibleScoreWithRemainingDarts = dartsRemaining * 60;
-    if (dartsRemaining === 2 && outMode === 'double') maxPossibleScoreWithRemainingDarts = 110; // T20 + D50
-    if (dartsRemaining === 1 && outMode === 'double') maxPossibleScoreWithRemainingDarts = 50;  // D50
+    if (dartsRemaining === 2 && outMode === 'double') maxPossibleScoreWithRemainingDarts = 110; 
+    if (dartsRemaining === 1 && outMode === 'double') maxPossibleScoreWithRemainingDarts = 50;  
 
     let isImpossible = false;
 
@@ -501,7 +500,6 @@ function calculateLiveTurnCheckout() {
         return;
     }
 
-    // Wenn noch Darts übrig sind und ein gültiges Checkout-Ziel existiert, neuen Tipp ansagen
     if (dartsRemaining > 0 && currentRemainingScore <= 170 && !invalidFinishes.includes(currentRemainingScore)) {
         let route = null;
         if (checkoutRoutes[currentRemainingScore]) {
@@ -564,7 +562,6 @@ function startGame() {
     legDartsCount = { 1: 0, 2: 0 };
 
     if (activeGlobalMode === 'x01') {
-        // NEU: Holen des Werts aus dem neuen Punkte-Slider
         initialPoints = parseInt(document.getElementById('input-points-slider').value);
         scores[1] = initialPoints; scores[2] = initialPoints;
 
@@ -650,11 +647,12 @@ function updateScoreboardDisplays() {
     document.getElementById('p1-legs-sets').innerText = `Legs: ${legs[1]} | Sets: ${sets[1]}`;
     document.getElementById('p2-legs-sets').innerText = `Legs: ${legs[2]} | Sets: ${sets[2]}`;
 
-    let p1SingleAvg = matchStats[1].totalDarts > 0 ? (matchStats[1].totalPoints / matchStats[1].totalDarts).toFixed(1) : "0.0";
-    let p2SingleAvg = matchStats[2].totalDarts > 0 ? (matchStats[2].totalPoints / matchStats[2].totalDarts).toFixed(1) : "0.0";
+    // KORREKTUR: Live-Anzeige berechnet nun den 3-Dart-Average
+    let p1TripleAvg = matchStats[1].totalDarts > 0 ? ((matchStats[1].totalPoints / matchStats[1].totalDarts) * 3).toFixed(1) : "0.0";
+    let p2TripleAvg = matchStats[2].totalDarts > 0 ? ((matchStats[2].totalPoints / matchStats[2].totalDarts) * 3).toFixed(1) : "0.0";
     
-    document.getElementById('p1-live-avg').innerText = `Ø ${p1SingleAvg} (${matchStats[1].totalDarts} Darts)`;
-    document.getElementById('p2-live-avg').innerText = `Ø ${p2SingleAvg} (${matchStats[2].totalDarts} Darts)`;
+    document.getElementById('p1-live-avg').innerText = `Ø ${p1TripleAvg} (${matchStats[1].totalDarts} Darts)`;
+    document.getElementById('p2-live-avg').innerText = `Ø ${p2TripleAvg} (${matchStats[2].totalDarts} Darts)`;
 }
 
 function abortGame() {
@@ -732,15 +730,15 @@ function checkLiveBustSegment(currentDartIndex) {
 
     let runningSum = d1 + d2 + d3;
     let currentScore = (activeGlobalMode === 'fin') ? finTargetScore : scores[activePlayer];
-    let remaining = currentScore - runningSum;
+    let runningRemaining = currentScore - runningSum;
     let modeOut = (activeGlobalMode === 'fin') ? 'double' : outMode;
 
-    if (remaining < 0 || (remaining === 1 && modeOut === 'double')) {
+    if (runningRemaining < 0 || (runningRemaining === 1 && modeOut === 'double')) {
         handleBustProcess(currentScore, runningSum, `${virtualDartData[1].label}/${virtualDartData[2].label}/${virtualDartData[3].label}`);
         return true;
     }
 
-    if (remaining === 0 && modeOut === 'double') {
+    if (runningRemaining === 0 && modeOut === 'double') {
         let activeData = virtualDartData[currentDartIndex];
         if (!activeData.key || (!activeData.key.startsWith('D') && activeData.key !== 'd-bull')) {
             handleBustProcess(currentScore, runningSum, `${virtualDartData[1].label}/${virtualDartData[2].label}/${virtualDartData[3].label}`);
@@ -849,9 +847,14 @@ function handleLegOrSetWin() {
         speak(isEn ? "Leg finished!" : "Leg beendet!");
     }
     
-    scores[1] = initialPoints; scores[2] = initialPoints;
-    legDartsCount[1] = 0; legDartsCount[2] = 0;
-    histories[1] = []; histories[2] = [];
+    // KORREKTUR: Zurücksetzen für das nächste Leg korrigiert, damit die Zählung und das Protokoll nicht einfrieren
+    scores[1] = initialPoints; 
+    scores[2] = initialPoints;
+    legDartsCount[1] = 0; 
+    legDartsCount[2] = 0;
+    histories[1] = []; 
+    histories[2] = [];
+    
     document.getElementById('p1-history-list').innerHTML = "";
     document.getElementById('p2-history-list').innerHTML = "";
     updateScoreboardDisplays();
@@ -868,10 +871,10 @@ function handleLegOrSetWin() {
 function executeBotTurn() {
     if(!isBotMatch || activePlayer !== 2 || isLockingInput) return;
     
-    let targetAvg = 35; let tripleChance = 0.02; let doubleChance = 0.05;
-    if (botLevel === 'medium') { targetAvg = 52; tripleChance = 0.08; doubleChance = 0.12; }
-    else if (botLevel === 'strong') { targetAvg = 78; tripleChance = 0.22; doubleChance = 0.30; }
-    else if (botLevel === 'insane') { targetAvg = 102; tripleChance = 0.45; doubleChance = 0.60; }
+    let tripleChance = 0.02; let doubleChance = 0.05;
+    if (botLevel === 'medium') { tripleChance = 0.08; doubleChance = 0.12; }
+    else if (botLevel === 'strong') { tripleChance = 0.22; doubleChance = 0.30; }
+    else if (botLevel === 'insane') { tripleChance = 0.45; doubleChance = 0.60; }
 
     let botRest = scores[2];
     let darts = [];
@@ -1083,59 +1086,9 @@ function showVictory(winnerId) {
     document.getElementById('th-p1-name').innerText = p1Name;
     document.getElementById('th-p2-name').innerText = p2Name;
 
-    let p1Avg = matchStats[1].totalDarts > 0 ? (matchStats[1].totalPoints / matchStats[1].totalDarts).toFixed(1) : "0.0";
-    let p2Avg = matchStats[2].totalDarts > 0 ? (matchStats[2].totalPoints / matchStats[2].totalDarts).toFixed(1) : "0.0";
+    // KORREKTUR: Umstellung auf 3-Dart-Average in der Spielzusammenfassung
+    let p1Avg = matchStats[1].totalDarts > 0 ? ((matchStats[1].totalPoints / matchStats[1].totalDarts) * 3).toFixed(1) : "0.0";
+    let p2Avg = matchStats[2].totalDarts > 0 ? ((matchStats[2].totalPoints / matchStats[2].totalDarts) * 3).toFixed(1) : "0.0";
     
-    let p1F9 = matchStats[1].first9Darts > 0 ? (matchStats[1].first9Points / matchStats[1].first9Darts).toFixed(1) : "0.0";
-    let p2F9 = matchStats[2].first9Darts > 0 ? (matchStats[2].first9Points / matchStats[2].first9Darts).toFixed(1) : "0.0";
-
-    let p1Shortest = matchStats[1].shortestLeg === 999 ? "-" : `${matchStats[1].shortestLeg} Darts`;
-    let p2Shortest = matchStats[2].shortestLeg === 999 ? "-" : `${matchStats[2].shortestLeg} Darts`;
-
-    const summaryBody = document.getElementById('summary-stats-body');
-    summaryBody.innerHTML = `
-        <tr><td>Einzeldart-Average (Ø1)</td><td><b>${p1Avg}</b></td><td><b>${p2Avg}</b></td></tr>
-        <tr><td>First 9 Average (Ø1)</td><td>${p1F9}</td><td>${p2F9}</td></tr>
-        <tr><td>Höchste Aufnahme</td><td>${matchStats[1].highestTurn}</td><td>${matchStats[2].highestTurn}</td></tr>
-        <tr><td>Höchstes Checkout</td><td>${matchStats[1].highestFinish}</td><td>${matchStats[2].highestFinish}</td></tr>
-        <tr><td>Shortest Leg</td><td>${p1Shortest}</td><td>${p2Shortest}</td></tr>
-        <tr><td>100+ / 140+ / 180er</td><td>${matchStats[1].c100} / ${matchStats[1].c140} / ${matchStats[1].c180}</td><td>${matchStats[2].c100} / ${matchStats[2].c140} / ${matchStats[2].c180}</td></tr>
-    `;
-
-    if (activeGlobalMode === 'x01') {
-        saveMatchToLocalStorage(parseFloat(p1Avg), matchStats[1].highestTurn, matchStats[1].highestFinish, matchStats[1].c180);
-    }
-
-    speak(currentLanguageCode.startsWith('en') ? "Game shot and match!" : "Spiel und Match!");
-}
-
-function saveMatchToLocalStorage(avg, highTurn, highFinish, count180s) {
-    let raw = localStorage.getItem('docKinl_dart_stats');
-    let stats = raw ? JSON.parse(raw) : { totalGames: 0, sumAvg: 0, highestTurn: 0, highestFinish: 0, total180s: 0 };
-    
-    stats.totalGames += 1;
-    stats.sumAvg += avg;
-    if(highTurn > stats.highestTurn) stats.highestTurn = highTurn;
-    if(highFinish > stats.highestFinish) stats.highestFinish = highFinish;
-    stats.total180s += count180s;
-
-    localStorage.setItem('docKinl_dart_stats', JSON.stringify(stats));
-}
-
-function openStatsModal() {
-    let raw = localStorage.getItem('docKinl_dart_stats');
-    let stats = raw ? JSON.parse(raw) : { totalGames: 0, sumAvg: 0, highestTurn: 0, highestFinish: 0, total180s: 0 };
-    
-    document.getElementById('stat-total-games').innerText = stats.totalGames;
-    document.getElementById('stat-alltime-avg').innerText = stats.totalGames > 0 ? (stats.sumAvg / stats.totalGames).toFixed(1) : "0.0";
-    document.getElementById('stat-highest-turn').innerText = stats.highestTurn;
-    document.getElementById('stat-highest-co').innerText = stats.highestFinish;
-    document.getElementById('stat-total-180s').innerText = stats.total180s;
-
-    document.getElementById('stats-modal').classList.remove('hidden');
-}
-
-function resetGame() {
-    document.getElementById('abschlussseite').classList.add('hidden');
-    document.getElementById('startseite').classList.remove('hidden');
-}
+    let p1F9 = matchStats[1].first9Darts > 0 ? ((matchStats[1].first9Points / matchStats[1].first9Darts) * 3).toFixed(1) : "0.0";
+    let p2F9 = matchStats[2].first9Darts > 0 ? ((matchStats

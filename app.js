@@ -29,19 +29,26 @@ let recognition = null;
 let selectedVoice = null;
 let currentLanguageCode = 'de-DE';
 
-// App-Initialisierung
-document.addEventListener("DOMContentLoaded", () => {
+// Sichere Initialisierung (wird mehrfach versucht, falls DOM noch nicht bereit)
+function safeInit() {
+    const startBtn = document.getElementById('btn-start-game');
+    // Wenn der Hauptbutton noch fehlt, warten wir noch kurz
+    if (!startBtn) {
+        setTimeout(safeInit, 50);
+        return;
+    }
+    
     initEventListeners();
     drawLiveBoard();
     initVoices();
-});
+}
 
-// Fallback für späte Event-Zuweisung
-setTimeout(() => {
-    initEventListeners();
-    drawLiveBoard();
-    initVoices();
-}, 500);
+// Startaufruf direkt an die Engine binden
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', safeInit);
+} else {
+    safeInit();
+}
 
 if (typeof speechSynthesis !== 'undefined' && speechSynthesis.onvoiceschanged !== undefined) {
     speechSynthesis.onvoiceschanged = initVoices;
@@ -97,9 +104,11 @@ function initEventListeners() {
     document.querySelectorAll('.btn-settings-open').forEach(btn => {
         btn.onclick = () => { document.getElementById('settings-modal').classList.remove('hidden'); };
     });
-    document.getElementById('btn-settings-close').onclick = () => {
-        document.getElementById('settings-modal').classList.add('hidden');
-    };
+    
+    const settingsClose = document.getElementById('btn-settings-close');
+    if (settingsClose) {
+        settingsClose.onclick = () => { document.getElementById('settings-modal').classList.add('hidden'); };
+    }
 
     // Theme-Umschaltung
     setupGroupListeners('group-theme-select', (val, btn) => {
@@ -114,8 +123,10 @@ function initEventListeners() {
         selectOption('group-toggle-tts', btn);
         isSpeechOutputActive = (val === 'true');
         const subMenu = document.getElementById('sub-voice-settings');
-        if(isSpeechOutputActive) subMenu.classList.remove('hidden');
-        else subMenu.classList.add('hidden');
+        if (subMenu) {
+            if(isSpeechOutputActive) subMenu.classList.remove('hidden');
+            else subMenu.classList.add('hidden');
+        }
     });
 
     // Spracheingabe Toggle (Ja/Nein)
@@ -160,14 +171,26 @@ function initEventListeners() {
         }
     }
 
-    document.getElementById('btn-start-game').onclick = startGame;
-    document.getElementById('btn-abort-game').onclick = abortGame;
-    document.getElementById('submit-btn').onclick = submitScore;
-    document.getElementById('btn-reset-game').onclick = resetGame;
+    const btnStart = document.getElementById('btn-start-game');
+    if (btnStart) btnStart.onclick = startGame;
+    
+    const btnAbort = document.getElementById('btn-abort-game');
+    if (btnAbort) btnAbort.onclick = abortGame;
+    
+    const btnSubmit = document.getElementById('submit-btn');
+    if (btnSubmit) btnSubmit.onclick = submitScore;
+    
+    const btnReset = document.getElementById('btn-reset-game');
+    if (btnReset) btnReset.onclick = resetGame;
 
-    document.getElementById('seg-1').oninput = function() { handleSegmentAutoJump(this, 'seg-2', 1); };
-    document.getElementById('seg-2').oninput = function() { handleSegmentAutoJump(this, 'seg-3', 2); };
-    document.getElementById('seg-3').oninput = function() { handleSegmentAutoJump(this, null, 3); };
+    const seg1 = document.getElementById('seg-1');
+    if (seg1) seg1.oninput = function() { handleSegmentAutoJump(this, 'seg-2', 1); };
+    
+    const seg2 = document.getElementById('seg-2');
+    if (seg2) seg2.oninput = function() { handleSegmentAutoJump(this, 'seg-3', 2); };
+    
+    const seg3 = document.getElementById('seg-3');
+    if (seg3) seg3.oninput = function() { handleSegmentAutoJump(this, null, 3); };
 }
 
 function setupGroupListeners(groupId, callback) {
@@ -184,9 +207,14 @@ function setupGroupListeners(groupId, callback) {
 
 function changeFinishingType(val, btn) {
     selectOption('group-fin-type', btn);
-    const rangeWrapper = document.getElementById('group-fin-range').closest('.form-group');
-    if (val === 'strict') rangeWrapper.classList.add('hidden'); 
-    else rangeWrapper.classList.remove('hidden');
+    const targetGroup = document.getElementById('group-fin-range');
+    if (targetGroup) {
+        const rangeWrapper = targetGroup.closest('.form-group');
+        if (rangeWrapper) {
+            if (val === 'strict') rangeWrapper.classList.add('hidden'); 
+            else rangeWrapper.classList.remove('hidden');
+        }
+    }
 }
 
 function selectOption(groupId, element) {
@@ -257,7 +285,7 @@ function speakTurnResult(score, rest) {
     window.speechSynthesis.speak(scoreUtterance);
 }
 
-// SPEECH INPUT LOGIK (STEUERUNG)
+// SPEECH INPUT LOGIK
 if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     recognition = new SpeechRecognition();
@@ -265,10 +293,16 @@ if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
     recognition.continuous = true;
     recognition.interimResults = false;
 
-    recognition.onstart = () => { document.getElementById('icon-listening-modal').classList.add('listening'); };
+    recognition.onstart = () => { 
+        const icon = document.getElementById('icon-listening-modal');
+        if (icon) icon.classList.add('listening'); 
+    };
     recognition.onend = () => {
         if (isSpeechInputActive) recognition.start(); 
-        else document.getElementById('icon-listening-modal').classList.remove('listening');
+        else {
+            const icon = document.getElementById('icon-listening-modal');
+            if (icon) icon.classList.remove('listening');
+        }
     };
     recognition.onresult = (event) => {
         let resultText = event.results[event.results.length - 1][0].transcript.toLowerCase().trim();
@@ -286,7 +320,8 @@ function setSpeechInputState(activate) {
         try { recognition.start(); } catch(e){}
     } else {
         recognition.stop();
-        document.getElementById('icon-listening-modal').classList.remove('listening');
+        const icon = document.getElementById('icon-listening-modal');
+        if (icon) icon.classList.remove('listening');
     }
 }
 
@@ -320,8 +355,12 @@ function verarbeiteSprachBefehl(phrase) {
 function setMultiplier(dartNum, multValue) {
     if (isLockingInput) return;
     currentMultipliers[dartNum] = multValue;
-    for (let i = 1; i <= 3; i++) document.getElementById(`m${dartNum}-${i}`).classList.remove('active');
-    document.getElementById(`m${dartNum}-${multValue}`).classList.add('active');
+    for (let i = 1; i <= 3; i++) {
+        const btn = document.getElementById(`m${dartNum}-${i}`);
+        if (btn) btn.classList.remove('active');
+    }
+    const targetBtn = document.getElementById(`m${dartNum}-${multValue}`);
+    if (targetBtn) targetBtn.classList.add('active');
 }
 
 function generateRandomFinish() {
@@ -417,13 +456,19 @@ function abortGame() {
 }
 
 function clearInputFields() {
-    document.getElementById('darts-input-set').value = "";
-    document.getElementById('seg-1').value = ""; document.getElementById('seg-2').value = ""; document.getElementById('seg-3').value = "";
+    const setIn = document.getElementById('darts-input-set');
+    if (setIn) setIn.value = "";
+    
+    const s1 = document.getElementById('seg-1'); if(s1) s1.value = "";
+    const s2 = document.getElementById('seg-2'); if(s2) s2.value = "";
+    const s3 = document.getElementById('seg-3'); if(s3) s3.value = "";
+    
     setMultiplier(1, 1); setMultiplier(2, 1); setMultiplier(3, 1);
     drawLiveBoard();
 }
 
 function parseSegmentData(fieldRaw, mult) {
+    if (!fieldRaw) return { val: 0, label: "0" };
     let clean = fieldRaw.trim().toLowerCase();
     if (clean === "" || clean === "0") return { val: 0, label: "0" };
     if (clean === "bull" || clean === "25" || clean === "b") {
@@ -746,7 +791,10 @@ function handleSegmentAutoJump(currentInput, nextInputId, dartNum) {
     let data = parseSegmentData(currentInput.value, currentMultipliers[dartNum]);
     if (data && (currentInput.value.length >= 2 || parseInt(currentInput.value) > 2 || raw === 'b')) {
         let wasBust = checkLiveBustSegment(dartNum);
-        if (!wasBust && nextInputId) document.getElementById(nextInputId).focus();
+        if (!wasBust && nextInputId) {
+            const nextEl = document.getElementById(nextInputId);
+            if (nextEl) nextEl.focus();
+        }
     }
 }
 

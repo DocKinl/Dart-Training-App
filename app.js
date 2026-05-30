@@ -148,6 +148,10 @@ function initVoices() {
 }
 
 function initSliderLabels() {
+    const pSlider = document.getElementById('input-points-slider');
+    if (pSlider) {
+        document.getElementById('points-slider-label').innerText = `Startpunkte: ${pSlider.value}`;
+    }
     const lSlider = document.getElementById('input-legs-slider');
     if (lSlider) {
         let val = parseInt(lSlider.value);
@@ -204,6 +208,14 @@ function initEventListeners() {
         else document.getElementById('options-bot').classList.add('hidden');
     });
 
+    // NEU: Listener für den Startpunkte-Slider
+    const pointsSlider = document.getElementById('input-points-slider');
+    if (pointsSlider) {
+        pointsSlider.oninput = function() {
+            document.getElementById('points-slider-label').innerText = `Startpunkte: ${this.value}`;
+        };
+    }
+
     const legsSlider = document.getElementById('input-legs-slider');
     if (legsSlider) {
         legsSlider.oninput = function() {
@@ -224,7 +236,6 @@ function initEventListeners() {
 
     setupGroupListeners('group-bot-level', (val, btn) => selectOption('group-bot-level', btn));
     setupGroupListeners('group-input-mode', (val, btn) => selectOption('group-input-mode', btn));
-    setupGroupListeners('group-points', (val, btn) => selectOption('group-points', btn));
     setupGroupListeners('group-out', (val, btn) => selectOption('group-out', btn));
     setupGroupListeners('group-fin-type', (val, btn) => changeFinishingType(val, btn));
     setupGroupListeners('group-fin-range', (val, btn) => selectOption('group-fin-range', btn));
@@ -286,7 +297,6 @@ function changeFinishingType(val, btn) {
     if (wrapper) wrapper.style.display = (val === 'strict') ? 'none' : 'block';
 }
 
-// Optionen aktivieren
 function selectOption(groupId, element) {
     document.querySelectorAll(`#${groupId} .btn-option`).forEach(btn => btn.classList.remove('active'));
     element.classList.add('active');
@@ -357,8 +367,15 @@ function inputVirtualDart(field) {
     updateDartPreviewDOM();
     let wasBust = checkLiveBustSegment(currentActiveDartSlot);
 
-    if (!wasBust && currentActiveDartSlot < 3) {
-        setActiveDartSlot(currentActiveDartSlot + 1);
+    if (!wasBust) {
+        // NEU: Nach jedem gültigen Dart den Checkout-Status im aktuellen Turn neu ermitteln
+        if (activeGlobalMode === 'x01' && inputMode === 'segment') {
+            calculateLiveTurnCheckout();
+        }
+        
+        if (currentActiveDartSlot < 3) {
+            setActiveDartSlot(currentActiveDartSlot + 1);
+        }
     }
     setVirtualMultiplier(1); 
 }
@@ -367,6 +384,9 @@ function clearLastVirtualDart() {
     virtualDartData[currentActiveDartSlot] = { val: 0, label: "-", rawField: "", m: 1, key: "" };
     updateDartPreviewDOM();
     document.getElementById('error-message').innerText = "";
+    if (activeGlobalMode === 'x01' && inputMode === 'segment') {
+        calculateLiveTurnCheckout();
+    }
 }
 
 function updateDartPreviewDOM() {
@@ -434,6 +454,73 @@ function triggerCheckoutHelperVoice(score) {
     }
 }
 
+// NEU: Live-Check nach jedem geworfenen Pfeil einer Aufnahme
+function calculateLiveTurnCheckout() {
+    if (!isCheckoutHelperActive || !isSpeechOutputActive) return;
+
+    let currentScore = scores[activePlayer];
+    let d1 = virtualDartData[1].val || 0;
+    let d2 = virtualDartData[2].val || 0;
+    let d3 = virtualDartData[3].val || 0;
+
+    // Wie viele Darts wurden in DIESER Aufnahme schon fest eingegeben?
+    let dartsThrownInTurn = 0;
+    if (virtualDartData[1].label !== "-") dartsThrownInTurn++;
+    if (virtualDartData[2].label !== "-") dartsThrownInTurn++;
+    if (virtualDartData[3].label !== "-") dartsThrownInTurn++;
+
+    let dartsRemaining = 3 - dartsThrownInTurn;
+    let currentRemainingScore = currentScore - (d1 + d2 + d3);
+
+    let isEn = currentLanguageCode.startsWith('en');
+
+    // Wenn das Leg bereits vorbei ist, greift die normale Leg-Win-Logik
+    if (currentRemainingScore === 0) return;
+
+    // Validierung, ob mit verbleibenden Darts überhaupt noch ein Finish möglich ist
+    let maxPossibleScoreWithRemainingDarts = dartsRemaining * 60;
+    if (dartsRemaining === 2 && outMode === 'double') maxPossibleScoreWithRemainingDarts = 110; // T20 + D50
+    if (dartsRemaining === 1 && outMode === 'double') maxPossibleScoreWithRemainingDarts = 50;  // D50
+
+    let isImpossible = false;
+
+    if (currentRemainingScore < 0) {
+        isImpossible = true;
+    } else if (outMode === 'double') {
+        if (currentRemainingScore === 1) isImpossible = true;
+        else if (currentRemainingScore > maxPossibleScoreWithRemainingDarts) isImpossible = true;
+        else if (invalidFinishes.includes(currentRemainingScore)) isImpossible = true;
+        else if (dartsRemaining === 1 && (currentRemainingScore > 50 || currentRemainingScore % 2 !== 0)) isImpossible = true;
+        else if (dartsRemaining === 2 && currentRemainingScore > 110) isImpossible = true;
+    } else {
+        if (currentRemainingScore > maxPossibleScoreWithRemainingDarts) isImpossible = true;
+    }
+
+    if (isImpossible) {
+        speak(isEn ? "No checkout possible" : "Kein Checkout mehr möglich");
+        return;
+    }
+
+    // Wenn noch Darts übrig sind und ein gültiges Checkout-Ziel existiert, neuen Tipp ansagen
+    if (dartsRemaining > 0 && currentRemainingScore <= 170 && !invalidFinishes.includes(currentRemainingScore)) {
+        let route = null;
+        if (checkoutRoutes[currentRemainingScore]) {
+            route = checkoutRoutes[currentRemainingScore];
+        } else if (currentRemainingScore <= 40 && currentRemainingScore % 2 === 0 && outMode === 'double') {
+            route = ["D" + (currentRemainingScore / 2)];
+        } else if (outMode === 'single' && currentRemainingScore <= 20) {
+            route = ["S" + currentRemainingScore];
+        }
+
+        if (route && route.length <= dartsRemaining) {
+            let text = isEn ? `Remaining ${currentRemainingScore}. Try ` : `${currentRemainingScore} Rest. Versuche `;
+            let elements = route.map(r => r.replace('T', 'Triple ').replace('D', 'Doppel ').replace('S', 'Single '));
+            text += elements.join(', ');
+            speak(text);
+        }
+    }
+}
+
 function generateRandomFinish() {
     if (finTypeSetting === 'strict') {
         let validTargets = [];
@@ -477,7 +564,8 @@ function startGame() {
     legDartsCount = { 1: 0, 2: 0 };
 
     if (activeGlobalMode === 'x01') {
-        initialPoints = parseInt(getSelectedValue('group-points'));
+        // NEU: Holen des Werts aus dem neuen Punkte-Slider
+        initialPoints = parseInt(document.getElementById('input-points-slider').value);
         scores[1] = initialPoints; scores[2] = initialPoints;
 
         let legsValue = parseInt(document.getElementById('input-legs-slider').value);
@@ -562,7 +650,6 @@ function updateScoreboardDisplays() {
     document.getElementById('p1-legs-sets').innerText = `Legs: ${legs[1]} | Sets: ${sets[1]}`;
     document.getElementById('p2-legs-sets').innerText = `Legs: ${legs[2]} | Sets: ${sets[2]}`;
 
-    // BEHOBEN: Zeigt bei 0 Darts nun sauber 0.0 statt NaN an
     let p1SingleAvg = matchStats[1].totalDarts > 0 ? (matchStats[1].totalPoints / matchStats[1].totalDarts).toFixed(1) : "0.0";
     let p2SingleAvg = matchStats[2].totalDarts > 0 ? (matchStats[2].totalPoints / matchStats[2].totalDarts).toFixed(1) : "0.0";
     
@@ -972,7 +1059,6 @@ function executeSODTurn() {
     resetVirtualState();
 }
 
-// BEREINIGT: Die Spalte für den alten Average wurde restlos entfernt
 function addHistoryEntry(player, score, rest, details, isBust) {
     histories[player].unshift({ score, rest, details, isBust });
     const tbody = document.getElementById(`p${player}-history-list`);

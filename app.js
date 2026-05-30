@@ -150,61 +150,37 @@ function initVoices() {
 function initSliderLabels() {
     const pSlider = document.getElementById('input-points-slider');
     if (pSlider) {
-        const lbl = document.getElementById('points-slider-label');
-        if (lbl) lbl.innerText = `Startpunkte: ${pSlider.value}`;
+        document.getElementById('points-slider-label').innerText = `Startpunkte: ${pSlider.value}`;
     }
     const lSlider = document.getElementById('input-legs-slider');
     if (lSlider) {
         let val = parseInt(lSlider.value);
-        const lbl = document.getElementById('legs-slider-label');
-        if (lbl) lbl.innerText = `Legs pro Set: Best of ${val} (First to ${Math.ceil(val / 2)})`;
+        document.getElementById('legs-slider-label').innerText = `Legs pro Set: Best of ${val} (First to ${Math.ceil(val / 2)})`;
     }
     const sSlider = document.getElementById('input-sets-slider');
     if (sSlider) {
         let val = parseInt(sSlider.value);
-        const lbl = document.getElementById('sets-slider-label');
-        if (lbl) lbl.innerText = `Sets zum Matchgewinn: Best of ${val} (First to ${Math.ceil(val / 2)})`;
+        document.getElementById('sets-slider-label').innerText = `Sets zum Matchgewinn: Best of ${val} (First to ${Math.ceil(val / 2)})`;
     }
 }
 
 function initEventListeners() {
     document.querySelectorAll('.btn-settings-open').forEach(btn => {
-        btn.onclick = () => { 
-            const modal = document.getElementById('settings-modal');
-            if (modal) modal.classList.remove('hidden'); 
-        };
+        btn.onclick = () => { document.getElementById('settings-modal').classList.remove('hidden'); };
     });
-    
     const settingsClose = document.getElementById('btn-settings-close');
     if (settingsClose) {
-        settingsClose.onclick = () => { 
-            const modal = document.getElementById('settings-modal');
-            if (modal) modal.classList.add('hidden'); 
-        };
+        settingsClose.onclick = () => { document.getElementById('settings-modal').classList.add('hidden'); };
     }
 
-    const openStatsBtn = document.getElementById('btn-open-stats');
-    if (openStatsBtn) {
-        openStatsBtn.onclick = openStatsModal;
-    }
-    
-    const closeStatsBtn = document.getElementById('btn-stats-close');
-    if (closeStatsBtn) {
-        closeStatsBtn.onclick = () => {
-            const modal = document.getElementById('stats-modal');
-            if (modal) modal.classList.add('hidden');
-        };
-    }
-    
-    const clearStatsBtn = document.getElementById('btn-clear-stats');
-    if (clearStatsBtn) {
-        clearStatsBtn.onclick = () => {
-            if(confirm("Alle gespeicherten Daten unwiderruflich löschen?")) {
-                localStorage.removeItem('docKinl_dart_stats');
-                openStatsModal();
-            }
-        };
-    }
+    document.getElementById('btn-open-stats').onclick = openStatsModal;
+    document.getElementById('btn-stats-close').onclick = () => document.getElementById('stats-modal').classList.add('hidden');
+    document.getElementById('btn-clear-stats').onclick = () => {
+        if(confirm("Alle gespeicherten Daten unwiderruflich löschen?")) {
+            localStorage.removeItem('docKinl_dart_stats');
+            openStatsModal();
+        }
+    };
 
     setupGroupListeners('group-theme-select', (val, btn) => {
         selectOption('group-theme-select', btn);
@@ -228,18 +204,14 @@ function initEventListeners() {
     setupGroupListeners('group-game-mode', (val, btn) => changeGameMode(val, btn));
     setupGroupListeners('group-players', (val, btn) => {
         selectOption('group-players', btn);
-        const botOpts = document.getElementById('options-bot');
-        if (botOpts) {
-            if(val === 'bot') botOpts.classList.remove('hidden');
-            else botOpts.classList.add('hidden');
-        }
+        if(val === 'bot') document.getElementById('options-bot').classList.remove('hidden');
+        else document.getElementById('options-bot').classList.add('hidden');
     });
 
     const pointsSlider = document.getElementById('input-points-slider');
     if (pointsSlider) {
         pointsSlider.oninput = function() {
-            const lbl = document.getElementById('points-slider-label');
-            if (lbl) lbl.innerText = `Startpunkte: ${this.value}`;
+            document.getElementById('points-slider-label').innerText = `Startpunkte: ${this.value}`;
         };
     }
 
@@ -248,8 +220,7 @@ function initEventListeners() {
         legsSlider.oninput = function() {
             let val = parseInt(this.value);
             let firstTo = Math.ceil(val / 2);
-            const lbl = document.getElementById('legs-slider-label');
-            if (lbl) lbl.innerText = `Legs pro Set: Best of ${val} (First to ${firstTo})`;
+            document.getElementById('legs-slider-label').innerText = `Legs pro Set: Best of ${val} (First to ${firstTo})`;
         };
     }
 
@@ -258,14 +229,8 @@ function initEventListeners() {
         setsSlider.oninput = function() {
             let val = parseInt(this.value);
             let firstTo = Math.ceil(val / 2);
-            const lbl = document.getElementById('sets-slider-label');
-            if (lbl) lbl.innerText = `Sets zum Matchgewinn: Best of ${val} (First to ${firstTo})`;
+            document.getElementById('sets-slider-label').innerText = `Sets zum Matchgewinn: Best of ${val} (First to ${firstTo})`;
         };
-    }
-
-    const langSelect = document.getElementById('voice-lang-select');
-    if (langSelect) {
-        langSelect.onchange = initVoices;
     }
 
     setupGroupListeners('group-bot-level', (val, btn) => selectOption('group-bot-level', btn));
@@ -277,9 +242,9 @@ function initEventListeners() {
     setupGroupListeners('group-sod-darts', (val, btn) => selectOption('group-sod-darts', btn));
     setupGroupListeners('group-sod-ring', (val, btn) => selectOption('group-sod-ring', btn));
 
-    const vm1 = document.getElementById('vmult-1'); if (vm1) vm1.onclick = () => setVirtualMultiplier(1);
-    const vm2 = document.getElementById('vmult-2'); if (vm2) vm2.onclick = () => setVirtualMultiplier(2);
-    const vm3 = document.getElementById('vmult-3'); if (vm3) vm3.onclick = () => setVirtualMultiplier(3);
+    document.getElementById('vmult-1').onclick = () => setVirtualMultiplier(1);
+    document.getElementById('vmult-2').onclick = () => setVirtualMultiplier(2);
+    document.getElementById('vmult-3').onclick = () => setVirtualMultiplier(3);
 
     document.querySelectorAll('.keyboard-grid .numkey, [data-val="bull"], [data-val="0"]').forEach(btn => {
         btn.onclick = function() {
@@ -288,12 +253,11 @@ function initEventListeners() {
         };
     });
 
-    const clrSeg = document.getElementById('vkey-clear-segments');
-    if (clrSeg) clrSeg.onclick = clearLastVirtualDart;
+    document.getElementById('vkey-clear-segments').onclick = clearLastVirtualDart;
 
-    const bd1 = document.getElementById('box-d1'); if (bd1) bd1.onclick = () => setActiveDartSlot(1);
-    const bd2 = document.getElementById('box-d2'); if (bd2) bd2.onclick = () => setActiveDartSlot(2);
-    const bd3 = document.getElementById('box-d3'); if (bd3) bd3.onclick = () => setActiveDartSlot(3);
+    document.getElementById('box-d1').onclick = () => setActiveDartSlot(1);
+    document.getElementById('box-d2').onclick = () => setActiveDartSlot(2);
+    document.getElementById('box-d3').onclick = () => setActiveDartSlot(3);
 
     document.querySelectorAll('.keyboard-grid-sum .sumkey').forEach(btn => {
         btn.onclick = function() {
@@ -309,13 +273,13 @@ function initEventListeners() {
         };
     });
 
-    const clrSum = document.getElementById('vkey-clear-sum'); if (clrSum) clrSum.onclick = () => { setVirtualSum(0); };
-    const subSum = document.getElementById('vkey-submit-sum'); if (subSum) subSum.onclick = submitScore;
+    document.getElementById('vkey-clear-sum').onclick = () => { setVirtualSum(0); };
+    document.getElementById('vkey-submit-sum').onclick = submitScore;
 
-    const btnStart = document.getElementById('btn-start-game'); if (btnStart) btnStart.onclick = startGame;
-    const btnAbort = document.getElementById('btn-abort-game'); if (btnAbort) btnAbort.onclick = abortGame;
-    const btnSubmit = document.getElementById('submit-btn'); if (btnSubmit) btnSubmit.onclick = submitScore;
-    const btnReset = document.getElementById('btn-reset-game'); if (btnReset) btnReset.onclick = resetGame;
+    document.getElementById('btn-start-game').onclick = startGame;
+    document.getElementById('btn-abort-game').onclick = abortGame;
+    document.getElementById('submit-btn').onclick = submitScore;
+    document.getElementById('btn-reset-game').onclick = resetGame;
 }
 
 function setupGroupListeners(groupId, callback) {
@@ -345,36 +309,32 @@ function getSelectedValue(groupId) {
 function changeGameMode(mode, element) {
     selectOption('group-game-mode', element);
     activeGlobalMode = mode;
-    
-    const x01 = document.getElementById('options-x01'); if (x01) x01.classList.add('hidden');
-    const fin = document.getElementById('options-fin'); if (fin) fin.classList.add('hidden');
-    const atc = document.getElementById('options-atc'); if (atc) atc.classList.add('hidden');
-    const sod = document.getElementById('options-sod'); if (sod) sod.classList.add('hidden');
-    const wp = document.getElementById('wrapper-players'); if (wp) wp.classList.remove('hidden');
-    const ob = document.getElementById('options-bot'); if (ob) ob.classList.add('hidden');
+    document.getElementById('options-x01').classList.add('hidden');
+    document.getElementById('options-fin').classList.add('hidden');
+    document.getElementById('options-atc').classList.add('hidden');
+    document.getElementById('options-sod').classList.add('hidden');
+    document.getElementById('wrapper-players').classList.remove('hidden');
+    document.getElementById('options-bot').classList.add('hidden');
 
     if (mode === 'x01') {
-        if (x01) x01.classList.remove('hidden');
-        if (getSelectedValue('group-players') === 'bot' && ob) ob.classList.remove('hidden');
+        document.getElementById('options-x01').classList.remove('hidden');
+        if(getSelectedValue('group-players') === 'bot') document.getElementById('options-bot').classList.remove('hidden');
     }
     else if (mode === 'fin') {
-        if (fin) fin.classList.remove('hidden');
-        if (wp) wp.classList.add('hidden');
+        document.getElementById('options-fin').classList.remove('hidden');
+        document.getElementById('wrapper-players').classList.add('hidden');
     }
-    else if (mode === 'atc') {
-        if (atc) atc.classList.remove('hidden');
-    }
+    else if (mode === 'atc') document.getElementById('options-atc').classList.remove('hidden');
     else if (mode === 'sod') {
-        if (sod) sod.classList.remove('hidden');
-        if (wp) wp.classList.add('hidden');
+        document.getElementById('options-sod').classList.remove('hidden');
+        document.getElementById('wrapper-players').classList.add('hidden');
     }
 }
 
 function setVirtualMultiplier(mValue) {
     currentVirtualSelectedMultiplier = mValue;
     document.querySelectorAll('[id^="vmult-"]').forEach(btn => btn.classList.remove('active'));
-    const btn = document.getElementById(`vmult-${mValue}`);
-    if (btn) btn.classList.add('active');
+    document.getElementById(`vmult-${mValue}`).classList.add('active');
 }
 
 function setActiveDartSlot(slotNum) {
@@ -386,8 +346,7 @@ function setActiveDartSlot(slotNum) {
 
 function inputVirtualDart(field) {
     if (isLockingInput) return;
-    const errMsg = document.getElementById('error-message');
-    if (errMsg) errMsg.innerText = "";
+    document.getElementById('error-message').innerText = "";
 
     let m = currentVirtualSelectedMultiplier;
     if (field === "bull" && m === 3) m = 2; 
@@ -422,8 +381,7 @@ function inputVirtualDart(field) {
 function clearLastVirtualDart() {
     virtualDartData[currentActiveDartSlot] = { val: 0, label: "-", rawField: "", m: 1, key: "" };
     updateDartPreviewDOM();
-    const errMsg = document.getElementById('error-message');
-    if (errMsg) errMsg.innerText = "";
+    document.getElementById('error-message').innerText = "";
     if (activeGlobalMode === 'x01' && inputMode === 'segment') {
         calculateLiveTurnCheckout();
     }
@@ -514,6 +472,11 @@ function calculateLiveTurnCheckout() {
 
     if (currentRemainingScore === 0) return;
 
+    // KORREKTUR: Wenn die Gesamtpunktzahl vor Beginn ODER die Restpunktzahl JETZT über 170 liegt, komplett schweigen.
+    if (currentScore > 170 && currentRemainingScore > 170) {
+        return; 
+    }
+
     let maxPossibleScoreWithRemainingDarts = dartsRemaining * 60;
     if (dartsRemaining === 2 && outMode === 'double') maxPossibleScoreWithRemainingDarts = 110; 
     if (dartsRemaining === 1 && outMode === 'double') maxPossibleScoreWithRemainingDarts = 50;  
@@ -582,14 +545,14 @@ function startGame() {
     botLevel = getSelectedValue('group-bot-level');
     inputMode = (activeGlobalMode === 'x01') ? getSelectedValue('group-input-mode') : 'segment';
 
-    const setInput = document.getElementById('set-input-container'); if (setInput) setInput.classList.add('hidden');
-    const segInput = document.getElementById('segment-input-container'); if (segInput) segInput.classList.add('hidden');
-    const p1Sub = document.getElementById('p1-sub'); if (p1Sub) p1Sub.classList.add('hidden');
-    const p1Title = document.getElementById('p1-title'); if (p1Title) p1Title.innerText = "Spieler 1";
-    const p2Title = document.getElementById('p2-title'); if (p2Title) p2Title.innerText = isBotMatch ? `Computer (${botLevel.toUpperCase()})` : "Spieler 2";
-    const h1Header = document.getElementById('h1-header'); if (h1Header) h1Header.innerText = "Verlauf S1";
-    const h2Header = document.getElementById('h2-header'); if (h2Header) h2Header.innerText = isBotMatch ? "Verlauf Bot" : "Verlauf S2";
-    const subBtn = document.getElementById('submit-btn'); if (subBtn) subBtn.classList.remove('hidden');
+    document.getElementById('set-input-container').classList.add('hidden');
+    document.getElementById('segment-input-container').classList.add('hidden');
+    document.getElementById('p1-sub').classList.add('hidden');
+    document.getElementById('p1-title').innerText = "Spieler 1";
+    document.getElementById('p2-title').innerText = isBotMatch ? `Computer (${botLevel.toUpperCase()})` : "Spieler 2";
+    document.getElementById('h1-header').innerText = "Verlauf S1";
+    document.getElementById('h2-header').innerText = isBotMatch ? "Verlauf Bot" : "Verlauf S2";
+    document.getElementById('submit-btn').classList.remove('hidden');
 
     matchStats = {
         1: { totalPoints: 0, totalDarts: 0, first9Points: 0, first9Darts: 0, turns: 0, c100: 0, c140: 0, c180: 0, highestTurn: 0, highestFinish: 0, shortestLeg: 999 },
@@ -598,92 +561,77 @@ function startGame() {
     legs = { 1: 0, 2: 0 }; sets = { 1: 0, 2: 0 };
     legDartsCount = { 1: 0, 2: 0 };
 
-    const p1Legs = document.getElementById('p1-legs-sets');
-    const p2Legs = document.getElementById('p2-legs-sets');
-    const p1Avg = document.getElementById('p1-live-avg');
-    const p2Avg = document.getElementById('p2-live-avg');
-    const gTitle = document.getElementById('game-title');
-
     if (activeGlobalMode === 'x01') {
-        const pSlider = document.getElementById('input-points-slider');
-        initialPoints = pSlider ? parseInt(pSlider.value) : 501;
+        initialPoints = parseInt(document.getElementById('input-points-slider').value);
         scores[1] = initialPoints; scores[2] = initialPoints;
 
-        const lSlider = document.getElementById('input-legs-slider');
-        let legsValue = lSlider ? parseInt(lSlider.value) : 5;
-        const sSlider = document.getElementById('input-sets-slider');
-        let setsValue = sSlider ? parseInt(sSlider.value) : 1;
+        let legsValue = parseInt(document.getElementById('input-legs-slider').value);
+        let setsValue = parseInt(document.getElementById('input-sets-slider').value);
         
         window.legsRequiredForSet = Math.ceil(legsValue / 2);
         window.setsRequiredForMatch = Math.ceil(setsValue / 2);
 
-        if (gTitle) gTitle.innerText = `${initialPoints}er Match (Best of ${setsValue} Sets, Legs pro Set: Best of ${legsValue})`;
+        document.getElementById('game-title').innerText = `${initialPoints}er Match (Best of ${setsValue} Sets, Legs pro Set: Best of ${legsValue})`;
 
         if (inputMode === 'set') {
-            if (setInput) setInput.classList.remove('hidden');
-            if (subBtn) subBtn.classList.add('hidden');
+            document.getElementById('set-input-container').classList.remove('hidden');
+            document.getElementById('submit-btn').classList.add('hidden');
         } else {
-            if (segInput) segInput.classList.remove('hidden');
+            document.getElementById('segment-input-container').classList.remove('hidden');
         }
-        if (p1Legs) p1Legs.classList.remove('hidden');
-        if (p2Legs) p2Legs.classList.remove('hidden');
-        if (p1Avg) p1Avg.classList.remove('hidden');
-        if (p2Avg) p2Avg.classList.remove('hidden');
+        document.getElementById('p1-legs-sets').classList.remove('hidden');
+        document.getElementById('p2-legs-sets').classList.remove('hidden');
+        document.getElementById('p1-live-avg').classList.remove('hidden');
+        document.getElementById('p2-live-avg').classList.remove('hidden');
     } else {
-        if (p1Legs) p1Legs.classList.add('hidden');
-        if (p2Legs) p2Legs.classList.add('hidden');
-        if (p1Avg) p1Avg.classList.add('hidden');
-        if (p2Avg) p2Avg.classList.add('hidden');
-        
+        document.getElementById('p1-legs-sets').classList.add('hidden');
+        document.getElementById('p2-legs-sets').classList.add('hidden');
+        document.getElementById('p1-live-avg').classList.add('hidden');
+        document.getElementById('p2-live-avg').classList.add('hidden');
         if (activeGlobalMode === 'fin') {
             finAttempts = 0;
             finTypeSetting = getSelectedValue('group-fin-type');
             finTargetScore = generateRandomFinish();
             scores[1] = finTargetScore;
             let typeLabel = finTypeSetting === 'strict' ? 'Exakt' : 'Realistisch';
-            if (gTitle) gTitle.innerText = `Finishing (${typeLabel})`;
-            if (p1Title) p1Title.innerText = "Target Finish";
-            if (h1Header) h1Header.innerText = "Würfe-Log";
-            if (p1Sub) {
-                p1Sub.classList.remove('hidden');
-                p1Sub.innerText = `Versuch: 1`;
-            }
-            if (segInput) segInput.classList.remove('hidden');
+            document.getElementById('game-title').innerText = `Finishing (${typeLabel})`;
+            document.getElementById('p1-title').innerText = "Target Finish";
+            document.getElementById('h1-header').innerText = "Würfe-Log";
+            document.getElementById('p1-sub').classList.remove('hidden');
+            document.getElementById('p1-sub').innerText = `Versuch: 1`;
+            document.getElementById('segment-input-container').classList.remove('hidden');
         } else if (activeGlobalMode === 'atc') {
             scores[1] = 1; scores[2] = 1;
-            if (gTitle) gTitle.innerText = `Around the Clock (ATC)`;
-            if (segInput) segInput.classList.remove('hidden');
+            document.getElementById('game-title').innerText = `Around the Clock (ATC)`;
+            document.getElementById('segment-input-container').classList.remove('hidden');
         } else if (activeGlobalMode === 'sod') {
-            const sodTarget = document.getElementById('sod-target-select');
-            let targetSegment = sodTarget ? sodTarget.value : "20";
+            scores[1] = parseInt(getSelectedValue('group-sod-darts'));
+            let targetSegment = document.getElementById('sod-target-select').value;
             let targetRing = getSelectedValue('group-sod-ring').toUpperCase();
-            scores[1] = parseInt(getSelectedValue('group-sod-darts')) || 60;
-            if (gTitle) gTitle.innerText = `Set of Darts (${targetRing} ${targetSegment.toUpperCase()})`;
-            if (segInput) segInput.classList.remove('hidden');
+            document.getElementById('game-title').innerText = `Set of Darts (${targetRing} ${targetSegment.toUpperCase()})`;
+            document.getElementById('segment-input-container').classList.remove('hidden');
         }
     }
 
     histories[1] = []; histories[2] = []; activePlayer = 1; isLockingInput = false;
     updateScoreboardDisplays();
 
-    const p1HistList = document.getElementById('p1-history-list'); if (p1HistList) p1HistList.innerHTML = "";
-    const p2HistList = document.getElementById('p2-history-list'); if (p2HistList) p2HistList.innerHTML = "";
-    
-    const p1Card = document.getElementById('p1-card'); if (p1Card) p1Card.classList.add('active');
-    const p2Card = document.getElementById('p2-card'); if (p2Card) p2Card.classList.remove('active');
+    document.getElementById('p1-history-list').innerHTML = "";
+    document.getElementById('p2-history-list').innerHTML = "";
+    document.getElementById('p1-card').classList.add('active');
+    document.getElementById('p2-card').classList.remove('active');
 
-    const p2HistBox = document.getElementById('p2-history-box');
     if (isTwoPlayers || isBotMatch) {
-        if (p2Card) p2Card.classList.remove('hidden');
-        if (p2HistBox) p2HistBox.classList.remove('hidden');
+        document.getElementById('p2-card').classList.remove('hidden');
+        document.getElementById('p2-history-box').classList.remove('hidden');
     } else {
-        if (p2Card) p2Card.classList.add('hidden');
-        if (p2HistBox) p2HistBox.classList.add('hidden');
+        document.getElementById('p2-card').classList.add('hidden');
+        document.getElementById('p2-history-box').classList.add('hidden');
     }
 
     resetVirtualState();
-    const startseite = document.getElementById('startseite'); if (startseite) startseite.classList.add('hidden');
-    const spielseite = document.getElementById('spielseite'); if (spielseite) spielseite.classList.remove('hidden');
+    document.getElementById('startseite').classList.add('hidden');
+    document.getElementById('spielseite').classList.remove('hidden');
     
     if(activeGlobalMode === 'fin') {
         let isEn = currentLanguageCode.startsWith('en');
@@ -694,23 +642,23 @@ function startGame() {
 }
 
 function updateScoreboardDisplays() {
-    const p1Score = document.getElementById('p1-score'); if (p1Score) p1Score.innerText = (activeGlobalMode === 'atc' && scores[1] === 21) ? "BULL" : scores[1];
-    const p2Score = document.getElementById('p2-score'); if (p2Score) p2Score.innerText = (activeGlobalMode === 'atc' && scores[2] === 21) ? "BULL" : scores[2];
-    
-    const p1Legs = document.getElementById('p1-legs-sets'); if (p1Legs) p1Legs.innerText = `Legs: ${legs[1]} | Sets: ${sets[1]}`;
-    const p2Legs = document.getElementById('p2-legs-sets'); if (p2Legs) p2Legs.innerText = `Legs: ${legs[2]} | Sets: ${sets[2]}`;
+    document.getElementById('p1-score').innerText = (activeGlobalMode === 'atc' && scores[1] === 21) ? "BULL" : scores[1];
+    document.getElementById('p2-score').innerText = (activeGlobalMode === 'atc' && scores[2] === 21) ? "BULL" : scores[2];
+    document.getElementById('p1-legs-sets').innerText = `Legs: ${legs[1]} | Sets: ${sets[1]}`;
+    document.getElementById('p2-legs-sets').innerText = `Legs: ${legs[2]} | Sets: ${sets[2]}`;
 
-    let p1SingleAvg = matchStats[1].totalDarts > 0 ? (matchStats[1].totalPoints / matchStats[1].totalDarts).toFixed(1) : "0.0";
-    let p2SingleAvg = matchStats[2].totalDarts > 0 ? (matchStats[2].totalPoints / matchStats[2].totalDarts).toFixed(1) : "0.0";
+    // KORREKTUR: Live-Anzeige berechnet nun den 3-Dart-Average
+    let p1TripleAvg = matchStats[1].totalDarts > 0 ? ((matchStats[1].totalPoints / matchStats[1].totalDarts) * 3).toFixed(1) : "0.0";
+    let p2TripleAvg = matchStats[2].totalDarts > 0 ? ((matchStats[2].totalPoints / matchStats[2].totalDarts) * 3).toFixed(1) : "0.0";
     
-    const p1LiveAvg = document.getElementById('p1-live-avg'); if (p1LiveAvg) p1LiveAvg.innerText = `Ø ${p1SingleAvg} (${matchStats[1].totalDarts} Darts)`;
-    const p2LiveAvg = document.getElementById('p2-live-avg'); if (p2LiveAvg) p2LiveAvg.innerText = `Ø ${p2SingleAvg} (${matchStats[2].totalDarts} Darts)`;
+    document.getElementById('p1-live-avg').innerText = `Ø ${p1TripleAvg} (${matchStats[1].totalDarts} Darts)`;
+    document.getElementById('p2-live-avg').innerText = `Ø ${p2TripleAvg} (${matchStats[2].totalDarts} Darts)`;
 }
 
 function abortGame() {
     if (confirm("Spiel wirklich abbrechen?")) {
-        const spielseite = document.getElementById('spielseite'); if (spielseite) spielseite.classList.add('hidden');
-        const startseite = document.getElementById('startseite'); if (startseite) startseite.classList.remove('hidden');
+        document.getElementById('spielseite').classList.add('hidden');
+        document.getElementById('startseite').classList.remove('hidden');
     }
 }
 
@@ -744,7 +692,7 @@ function parseSegmentData(fieldRaw, mult) {
 function handleBustProcess(currentScore, scoredPoints, originalDetails) {
     let isEn = currentLanguageCode.startsWith('en');
     let text = isEn ? "Bust!" : "Überworfen!";
-    const errMsg = document.getElementById('error-message'); if (errMsg) errMsg.innerText = text;
+    document.getElementById('error-message').innerText = text;
     speak(text);
     
     if (activeGlobalMode === 'x01') {
@@ -759,14 +707,14 @@ function handleBustProcess(currentScore, scoredPoints, originalDetails) {
         addHistoryEntry(1, scoredPoints, finTargetScore, originalDetails, true);
         scores[1] = finTargetScore;
         updateScoreboardDisplays();
-        const p1Sub = document.getElementById('p1-sub'); if (p1Sub) p1Sub.innerText = `Versuch: ${finAttempts + 1}`;
+        document.getElementById('p1-sub').innerText = `Versuch: ${finAttempts + 1}`;
     } else {
         addHistoryEntry(activePlayer, scoredPoints, currentScore, originalDetails, true);
     }
 
     isLockingInput = true;
     setTimeout(() => {
-        const errMsgClean = document.getElementById('error-message'); if (errMsgClean) errMsgClean.innerText = "";
+        document.getElementById('error-message').innerText = "";
         isLockingInput = false;
         if (activeGlobalMode !== 'fin') nextPlayer();
         resetVirtualState();
@@ -782,15 +730,15 @@ function checkLiveBustSegment(currentDartIndex) {
 
     let runningSum = d1 + d2 + d3;
     let currentScore = (activeGlobalMode === 'fin') ? finTargetScore : scores[activePlayer];
-    let remaining = currentScore - runningSum;
+    let runningRemaining = currentScore - runningSum;
     let modeOut = (activeGlobalMode === 'fin') ? 'double' : outMode;
 
-    if (remaining < 0 || (remaining === 1 && modeOut === 'double')) {
+    if (runningRemaining < 0 || (runningRemaining === 1 && modeOut === 'double')) {
         handleBustProcess(currentScore, runningSum, `${virtualDartData[1].label}/${virtualDartData[2].label}/${virtualDartData[3].label}`);
         return true;
     }
 
-    if (remaining === 0 && modeOut === 'double') {
+    if (runningRemaining === 0 && modeOut === 'double') {
         let activeData = virtualDartData[currentDartIndex];
         if (!activeData.key || (!activeData.key.startsWith('D') && activeData.key !== 'd-bull')) {
             handleBustProcess(currentScore, runningSum, `${virtualDartData[1].label}/${virtualDartData[2].label}/${virtualDartData[3].label}`);
@@ -802,7 +750,7 @@ function checkLiveBustSegment(currentDartIndex) {
 
 function submitScore() {
     if (isLockingInput) return;
-    const errMsg = document.getElementById('error-message'); if (errMsg) errMsg.innerText = "";
+    document.getElementById('error-message').innerText = "";
 
     if (activeGlobalMode === 'x01') executeX01Turn();
     else if (activeGlobalMode === 'fin') executeFinishingTurn();
@@ -818,7 +766,7 @@ function executeX01Turn() {
     if (inputMode === 'set') {
         totalScore = virtualSumValue;
         if (impossibleScores.includes(totalScore)) {
-            const errMsg = document.getElementById('error-message'); if (errMsg) errMsg.innerText = "Ungültige Score-Kombination!";
+            document.getElementById('error-message').innerText = "Ungültige Score-Kombination!";
             return;
         }
         let remaining = currentScore - totalScore;
@@ -899,13 +847,16 @@ function handleLegOrSetWin() {
         speak(isEn ? "Leg finished!" : "Leg beendet!");
     }
     
-    scores[1] = initialPoints; scores[2] = initialPoints;
-    legDartsCount[1] = 0; legDartsCount[2] = 0;
-    histories[1] = []; histories[2] = [];
+    // KORREKTUR: Zurücksetzen für das nächste Leg korrigiert, damit die Zählung und das Protokoll nicht einfrieren
+    scores[1] = initialPoints; 
+    scores[2] = initialPoints;
+    legDartsCount[1] = 0; 
+    legDartsCount[2] = 0;
+    histories[1] = []; 
+    histories[2] = [];
     
-    const p1List = document.getElementById('p1-history-list'); if (p1List) p1List.innerHTML = "";
-    const p2List = document.getElementById('p2-history-list'); if (p2List) p2List.innerHTML = "";
-    
+    document.getElementById('p1-history-list').innerHTML = "";
+    document.getElementById('p2-history-list').innerHTML = "";
     updateScoreboardDisplays();
     
     activePlayer = (winner === 1) ? 2 : 1; 
@@ -920,10 +871,10 @@ function handleLegOrSetWin() {
 function executeBotTurn() {
     if(!isBotMatch || activePlayer !== 2 || isLockingInput) return;
     
-    let targetAvg = 35; let tripleChance = 0.02; let doubleChance = 0.05;
-    if (botLevel === 'medium') { targetAvg = 52; tripleChance = 0.08; doubleChance = 0.12; }
-    else if (botLevel === 'strong') { targetAvg = 78; tripleChance = 0.22; doubleChance = 0.30; }
-    else if (botLevel === 'insane') { targetAvg = 102; tripleChance = 0.45; doubleChance = 0.60; }
+    let tripleChance = 0.02; let doubleChance = 0.05;
+    if (botLevel === 'medium') { tripleChance = 0.08; doubleChance = 0.12; }
+    else if (botLevel === 'strong') { tripleChance = 0.22; doubleChance = 0.30; }
+    else if (botLevel === 'insane') { tripleChance = 0.45; doubleChance = 0.60; }
 
     let botRest = scores[2];
     let darts = [];
@@ -972,14 +923,9 @@ function executeBotTurn() {
 
 function nextPlayer() {
     if (!isTwoPlayers && !isBotMatch) return;
-    
-    const currentCard = document.getElementById(`p${activePlayer}-card`);
-    if (currentCard) currentCard.classList.remove('active');
-    
+    document.getElementById(`p${activePlayer}-card`).classList.remove('active');
     activePlayer = activePlayer === 1 ? 2 : 1;
-    
-    const nextCard = document.getElementById(`p${activePlayer}-card`);
-    if (nextCard) nextCard.classList.add('active');
+    document.getElementById(`p${activePlayer}-card`).classList.add('active');
 
     if (activeGlobalMode === 'x01') triggerCheckoutHelperVoice(scores[activePlayer]);
 
@@ -1011,4 +957,189 @@ function executeFinishingTurn() {
             window.speechSynthesis.cancel();
             speak(isEn ? `Leg finished!` : `Leg beendet!`);
             alert(isEn ? `Checked ${originalTarget} in ${finAttempts} throws.` : `Sauber! Du hast das Finish ${originalTarget} in ${finAttempts} Aufnahmen gecheckt.`);
-            finAttempts = 0; fin
+            finAttempts = 0; finTargetScore = generateRandomFinish(); scores[1] = finTargetScore;
+            updateScoreboardDisplays();
+            document.getElementById('p1-sub').innerText = `Versuch: 1`;
+            document.getElementById('p1-history-list').innerHTML = "";
+            speak(isEn ? "Next target is " + finTargetScore : "Nächstes Ziel ist " + finTargetScore);
+        } else {
+            finAttempts++;
+            addHistoryEntry(1, isEn ? "No Check" : "Kein Check", finTargetScore, scoreDetails, false);
+            document.getElementById('p1-sub').innerText = `Versuch: ${finAttempts + 1}`;
+            speak(isEn ? "No checkout" : "Kein Checkout");
+        }
+        resetVirtualState(); return;
+    }
+
+    let runningScore = finTargetScore;
+    let isCheckout = false; let totalScoredThisTurn = 0; let displayLabels = [];
+
+    for (let i = 0; i < darts.length; i++) {
+        let d = darts[i];
+        displayLabels.push(d.label);
+        runningScore -= d.val;
+        totalScoredThisTurn += d.val;
+
+        if (runningScore === 0) {
+            if (d.key && (d.key.startsWith('D') || d.key === 'd-bull')) {
+                isCheckout = true; break;
+            }
+        }
+        if (runningScore < 0 || runningScore === 1 || (runningScore === 0 && !isCheckout)) {
+            handleBustProcess(originalTarget, totalScoredThisTurn, displayLabels.join('/')); return;
+        }
+    }
+
+    let scoreDetails = displayLabels.join('/');
+    if (isCheckout) {
+        finAttempts++; histories[1] = [];
+        window.speechSynthesis.cancel();
+        speak(isEn ? `Leg finished!` : `Leg beendet!`);
+        alert(isEn ? `Nice! Checked ${originalTarget} in ${finAttempts} throws.` : `Sauber! Du hast das Finish ${originalTarget} in ${finAttempts} Aufnahmen gecheckt.`);
+        finAttempts = 0; finTargetScore = generateRandomFinish(); scores[1] = finTargetScore;
+        updateScoreboardDisplays();
+        document.getElementById('p1-sub').innerText = `Versuch: 1`;
+        document.getElementById('p1-history-list').innerHTML = "";
+        speak(isEn ? "Next target is " + finTargetScore : "Nächstes Ziel ist " + finTargetScore);
+    } else {
+        finAttempts++; scores[1] = runningScore;
+        updateScoreboardDisplays();
+        document.getElementById('p1-sub').innerText = `Versuch: ${finAttempts + 1}`;
+        addHistoryEntry(1, totalScoredThisTurn, scores[1], scoreDetails, false);
+        speakTurnResult(totalScoredThisTurn, scores[1]);
+    }
+    resetVirtualState();
+}
+
+function executeATCTurn() {
+    let bonusMode = getSelectedValue('group-atc-bonus') === 'bonus';
+    let darts = [virtualDartData[1], virtualDartData[2], virtualDartData[3]];
+    let hits = 0;
+
+    darts.forEach(d => {
+        let targetString = scores[activePlayer] === 21 ? "bull" : scores[activePlayer].toString();
+        let currentDartBase = d.rawField === "bull" ? "bull" : d.rawField;
+        if (currentDartBase === targetString && d.val > 0) {
+            let steps = bonusMode ? d.m : 1;
+            scores[activePlayer] += steps; hits += steps;
+            if (scores[activePlayer] > 21) scores[activePlayer] = 21;
+        }
+    });
+
+    updateScoreboardDisplays();
+    let isEn = currentLanguageCode.startsWith('en');
+    let hitLabel = isEn ? `${hits} Hits` : `${hits} Treffer`;
+    addHistoryEntry(activePlayer, hitLabel, scores[activePlayer], `${virtualDartData[1].label}/${virtualDartData[2].label}/${virtualDartData[3].label}`, false);
+    
+    let targetText = scores[activePlayer] === 21 ? "Bullseye" : scores[activePlayer].toString();
+    speakTurnResult(hitLabel, isEn ? "Target is now " + targetText : "Ziel ist jetzt " + targetText);
+
+    if (scores[activePlayer] === 21) { showVictory(activePlayer); return; }
+    nextPlayer(); resetVirtualState();
+}
+
+function executeSODTurn() {
+    let targetField = document.getElementById('sod-target-select').value;
+    let targetRing = getSelectedValue('group-sod-ring');
+    let darts = [virtualDartData[1], virtualDartData[2], virtualDartData[3]];
+    let hitCount = 0;
+
+    darts.forEach(d => {
+        let isField = d.rawField === targetField;
+        let isRing = (targetRing === 'single' && d.m === 1) || (targetRing === 'double' && d.m === 2) || (targetRing === 'treble' && d.m === 3);
+        if (isField && isRing) hitCount++;
+    });
+
+    scores[1] -= 3; if (scores[1] < 0) scores[1] = 0;
+    updateScoreboardDisplays();
+    
+    let isEn = currentLanguageCode.startsWith('en');
+    let hitLabel = isEn ? `${hitCount} Hits` : `${hitCount} Treffer`;
+    addHistoryEntry(1, hitCount, scores[1], `${virtualDartData[1].label}/${virtualDartData[2].label}/${virtualDartData[3].label}`, false);
+    speakTurnResult(hitLabel, isEn ? scores[1] + " darts remaining" : scores[1] + " Pfeile verbleibend");
+
+    if (scores[1] <= 0) { showVictory(1); return; }
+    resetVirtualState();
+}
+
+function addHistoryEntry(player, score, rest, details, isBust) {
+    histories[player].unshift({ score, rest, details, isBust });
+    const tbody = document.getElementById(`p${player}-history-list`);
+    if(!tbody) return;
+    tbody.innerHTML = "";
+
+    histories[player].forEach((item, index) => {
+        let dartsThrown = (histories[player].length - index) * 3;
+        let displayScore = item.isBust ? `Bust` : item.score;
+        tbody.innerHTML += `<tr><td>${dartsThrown}</td><td>${displayScore}</td><td>${item.rest}</td><td>${item.details}</td></tr>`;
+    });
+}
+
+function showVictory(winnerId) {
+    document.getElementById('spielseite').classList.add('hidden');
+    document.getElementById('abschlussseite').classList.remove('hidden');
+    
+    let p1Name = "Spieler 1";
+    let p2Name = isBotMatch ? `Computer (${botLevel.toUpperCase()})` : "Spieler 2";
+    
+    document.getElementById('winner-announcement').innerText = winnerId === 1 ? `${p1Name} gewinnt das Match!` : `${p2Name} gewinnt das Match!`;
+    document.getElementById('th-p1-name').innerText = p1Name;
+    document.getElementById('th-p2-name').innerText = p2Name;
+
+    // KORREKTUR: Umstellung auf 3-Dart-Average in der Spielzusammenfassung
+    let p1Avg = matchStats[1].totalDarts > 0 ? ((matchStats[1].totalPoints / matchStats[1].totalDarts) * 3).toFixed(1) : "0.0";
+    let p2Avg = matchStats[2].totalDarts > 0 ? ((matchStats[2].totalPoints / matchStats[2].totalDarts) * 3).toFixed(1) : "0.0";
+    
+    let p1F9 = matchStats[1].first9Darts > 0 ? ((matchStats[1].first9Points / matchStats[1].first9Darts) * 3).toFixed(1) : "0.0";
+    let p2F9 = matchStats[2].first9Darts > 0 ? ((matchStats[2].first9Points / matchStats[2].first9Darts) * 3).toFixed(1) : "0.0";
+
+    let p1Shortest = matchStats[1].shortestLeg === 999 ? "-" : `${matchStats[1].shortestLeg} Darts`;
+    let p2Shortest = matchStats[2].shortestLeg === 999 ? "-" : `${matchStats[2].shortestLeg} Darts`;
+
+    const summaryBody = document.getElementById('summary-stats-body');
+    summaryBody.innerHTML = `
+        <tr><td>3-Dart-Average (Ø3)</td><td><b>${p1Avg}</b></td><td><b>${p2Avg}</b></td></tr>
+        <tr><td>First 9 Average (Ø3)</td><td>${p1F9}</td><td>${p2F9}</td></tr>
+        <tr><td>Höchste Aufnahme</td><td>${matchStats[1].highestTurn}</td><td>${matchStats[2].highestTurn}</td></tr>
+        <tr><td>Höchstes Checkout</td><td>${matchStats[1].highestFinish}</td><td>${matchStats[2].highestFinish}</td></tr>
+        <tr><td>Shortest Leg</td><td>${p1Shortest}</td><td>${p2Shortest}</td></tr>
+        <tr><td>100+ / 140+ / 180er</td><td>${matchStats[1].c100} / ${matchStats[1].c140} / ${matchStats[1].c180}</td><td>${matchStats[2].c100} / ${matchStats[2].c140} / ${matchStats[2].c180}</td></tr>
+    `;
+
+    if (activeGlobalMode === 'x01') {
+        saveMatchToLocalStorage(parseFloat(p1Avg), matchStats[1].highestTurn, matchStats[1].highestFinish, matchStats[1].c180);
+    }
+
+    speak(currentLanguageCode.startsWith('en') ? "Game shot and match!" : "Spiel und Match!");
+}
+
+function saveMatchToLocalStorage(avg, highTurn, highFinish, count180s) {
+    let raw = localStorage.getItem('docKinl_dart_stats');
+    let stats = raw ? JSON.parse(raw) : { totalGames: 0, sumAvg: 0, highestTurn: 0, highestFinish: 0, total180s: 0 };
+    
+    stats.totalGames += 1;
+    stats.sumAvg += avg;
+    if(highTurn > stats.highestTurn) stats.highestTurn = highTurn;
+    if(highFinish > stats.highestFinish) stats.highestFinish = highFinish;
+    stats.total180s += count180s;
+
+    localStorage.setItem('docKinl_dart_stats', JSON.stringify(stats));
+}
+
+function openStatsModal() {
+    let raw = localStorage.getItem('docKinl_dart_stats');
+    let stats = raw ? JSON.parse(raw) : { totalGames: 0, sumAvg: 0, highestTurn: 0, highestFinish: 0, total180s: 0 };
+    
+    document.getElementById('stat-total-games').innerText = stats.totalGames;
+    document.getElementById('stat-alltime-avg').innerText = stats.totalGames > 0 ? (stats.sumAvg / stats.totalGames).toFixed(1) : "0.0";
+    document.getElementById('stat-highest-turn').innerText = stats.highestTurn;
+    document.getElementById('stat-highest-co').innerText = stats.highestFinish;
+    document.getElementById('stat-total-180s').innerText = stats.total180s;
+
+    document.getElementById('stats-modal').classList.remove('hidden');
+}
+
+function resetGame() {
+    document.getElementById('abschlussseite').classList.add('hidden');
+    document.getElementById('startseite').classList.remove('hidden');
+}

@@ -18,6 +18,8 @@
             --gold-text: #f3e5ab;
             --btn-num-bg: #2d2d2d;
             --btn-action-bg: #444444;
+            --shortcut-bg: #25352e;
+            --shortcut-text: #ffffff;
         }
 
         .light-theme {
@@ -33,6 +35,8 @@
             --gold-text: #b8860b;
             --btn-num-bg: #e0e0e0;
             --btn-action-bg: #bdbdbd;
+            --shortcut-bg: #d1e7dd;
+            --shortcut-text: #0f5132;
         }
 
         body { font-family: sans-serif; background: var(--bg-color); color: var(--text-color); padding: 10px; margin: 0; transition: background 0.3s, color 0.3s; touch-action: manipulation; }
@@ -79,19 +83,15 @@
         .btn-key.modifier { background: var(--btn-action-bg); color: #fff; }
         .btn-key.modifier.active { background: var(--gold-text); color: #000; border-color: var(--gold-text); }
         .btn-key.action-clear { background: #555; color: #fff; }
-        .btn-key.shortcut { background: #25352e; border-color: #334e43; font-size: 13px; padding: 8px 2px; }
+        .btn-key.shortcut { background: var(--shortcut-bg); color: var(--shortcut-text); border-color: var(--border-color); font-size: 13px; padding: 8px 2px; }
 
         .sum-display-box { background: var(--input-bg); border: 1px solid var(--border-color); border-radius: 6px; padding: 12px; text-align: center; font-size: 28px; font-weight: bold; color: var(--gold-text); margin-bottom: 10px; min-height: 34px; }
-        .dartboard-container { display: flex; justify-content: center; margin: 15px 0 5px 0; }
-        .dartboard-svg { max-width: 160px; width: 100%; height: auto; opacity: 0.6; }
-        .board-text { fill: #fff; font-size: 10px; font-weight: bold; text-anchor: middle; dominant-baseline: central; }
     </style>
 </head>
 <body>
 
 <div class="container">
 
-    <!-- STARTSEITE & SETUP -->
     <div id="startseite" class="card">
         <button class="settings-trigger btn-settings-open">⚙️</button>
         <h2 style="text-align: center; color: var(--accent-color); margin-top: 0; letter-spacing: 1px;">DocKinl Dart Scorer</h2>
@@ -114,7 +114,6 @@
             </div>
         </div>
 
-        <!-- SPEZIFISCHE OPTIONEN: X01 -->
         <div id="options-x01">
             <div class="form-group">
                 <label>Startpunkte</label>
@@ -140,7 +139,6 @@
             </div>
         </div>
 
-        <!-- SPEZIFISCHE OPTIONEN: FINISHING -->
         <div id="options-fin" class="hidden">
             <div class="form-group">
                 <label>Finishing Typ</label>
@@ -159,7 +157,6 @@
             </div>
         </div>
 
-        <!-- SPEZIFISCHE OPTIONEN: ATC -->
         <div id="options-atc" class="hidden">
             <div class="form-group">
                 <label>Bonus-Modus</label>
@@ -170,7 +167,6 @@
             </div>
         </div>
 
-        <!-- SPEZIFISCHE OPTIONEN: SET OF DARTS -->
         <div id="options-sod" class="hidden">
             <div class="form-group">
                 <label>Zielsegment</label>
@@ -197,7 +193,6 @@
         <button class="btn-main" id="btn-start-game" style="margin-top: 5px;">SPIEL STARTEN</button>
     </div>
 
-    <!-- SPIELSEITE -->
     <div id="spielseite" class="card hidden">
         <button class="settings-trigger btn-settings-open">⚙️</button>
         <h2 id="game-title" style="text-align:center; color: var(--gold-text); margin-top:0; font-size: 20px;">501 Match</h2>
@@ -216,7 +211,6 @@
 
         <div class="error-msg" id="error-message"></div>
 
-        <!-- EINZEL-DARTS KEYPAD (SEGMENT) -->
         <div id="segment-input-container">
             <div class="dart-live-preview">
                 <div class="preview-box active-slot" id="box-d1">Dart 1: -</div>
@@ -263,7 +257,6 @@
             </div>
         </div>
 
-        <!-- GESAMT-SUMMEN KEYPAD (SET) -->
         <div id="set-input-container" class="hidden">
             <div class="sum-display-box" id="virtual-sum-display">0</div>
             
@@ -299,34 +292,29 @@
         <button class="btn-main" id="submit-btn" style="margin-top:15px; background:#e50914; border-color:#b3060f;">WURF BESTÄTIGEN</button>
         <button class="btn-main btn-abort" id="btn-abort-game">Spiel abbrechen</button>
 
-        <!-- VERLAUF -->
         <div style="display:flex; gap:15px; margin-top:15px;">
             <div style="flex:1;">
                 <h4 id="h1-header" style="margin:5px 0; opacity:0.6; font-size:13px;">Verlauf S1</h4>
                 <table class="history-table">
-                    <thead><tr><th>Darts</th><th>Score</th><th>Rest</th><th>Details</th></tr></thead>
+                    <thead><tr><th>Darts</th><th>Score</th><th>𝚿 Ø3</th><th>Rest</th><th>Details</th></tr></thead>
                     <tbody id="p1-history-list"></tbody>
                 </table>
             </div>
             <div style="flex:1;" id="p2-history-box" class="hidden">
                 <h4 style="margin:5px 0; opacity:0.6; font-size:13px;">Verlauf S2</h4>
                 <table class="history-table">
-                    <thead><tr><th>Darts</th><th>Score</th><th>Rest</th><th>Details</th></tr></thead>
+                    <thead><tr><th>Darts</th><th>Score</th><th>𝚿 Ø3</th><th>Rest</th><th>Details</th></tr></thead>
                     <tbody id="p2-history-list"></tbody>
                 </table>
             </div>
         </div>
-
-        <div class="dartboard-container" id="live-board-layout"></div>
     </div>
 
-    <!-- ABSCHLUSSSEITE -->
     <div id="abschlussseite" class="card hidden" style="text-align:center;">
         <h2 style="color: var(--gold-text); font-size: 26px;">🏆 GEWONNEN! 🏆</h2>
         <button class="btn-main" id="btn-reset-game" style="max-width: 300px; margin: 10px auto 0 auto;">Hauptmenü</button>
     </div>
 
-    <!-- EINSTELLUNGEN -->
     <div id="settings-modal" class="modal-overlay hidden">
         <div class="modal-content">
             <button class="modal-close" id="btn-settings-close">✖</button>

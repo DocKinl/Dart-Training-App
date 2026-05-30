@@ -8,7 +8,16 @@ let scores = { 1: 501, 2: 501 };
 let histories = { 1: [], 2: [] };
 let activePlayer = 1;
 let isLockingInput = false;
-let currentMultipliers = { 1: 1, 2: 1, 3: 1 };
+
+// Neues virtuelles Keyboard State System
+let currentVirtualSelectedMultiplier = 1; // 1 = Single, 2 = Double, 3 = Triple
+let currentActiveDartSlot = 1; // 1, 2 oder 3
+let virtualDartData = {
+    1: { val: null, label: "-", rawField: "", m: 1 },
+    2: { val: null, label: "-", rawField: "", m: 1 },
+    3: { val: null, label: "-", rawField: "", m: 1 }
+};
+let virtualSumValue = 0;
 
 // Finishing Variablen
 let finAttempts = 0;
@@ -20,30 +29,24 @@ let isSpeechOutputActive = true;
 let isSpeechInputActive = false;
 let currentTheme = 'dark';
 
-// Dartboard-Konstanten
 const sectors = [20, 1, 18, 4, 13, 6, 10, 15, 2, 17, 3, 19, 7, 16, 8, 11, 14, 9, 12, 5];
 const invalidFinishes = [169, 168, 166, 165, 163, 162, 159];
 
-// Voice API Variablen
 let recognition = null;
 let selectedVoice = null;
 let currentLanguageCode = 'de-DE';
 
-// Sichere Initialisierung (wird mehrfach versucht, falls DOM noch nicht bereit)
 function safeInit() {
     const startBtn = document.getElementById('btn-start-game');
-    // Wenn der Hauptbutton noch fehlt, warten wir noch kurz
     if (!startBtn) {
         setTimeout(safeInit, 50);
         return;
     }
-    
     initEventListeners();
     drawLiveBoard();
     initVoices();
 }
 
-// Startaufruf direkt an die Engine binden
 if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', safeInit);
 } else {
@@ -56,22 +59,19 @@ if (typeof speechSynthesis !== 'undefined' && speechSynthesis.onvoiceschanged !=
 
 function initVoices() {
     if (typeof speechSynthesis === 'undefined') return;
-    
     let voices = speechSynthesis.getVoices();
     let voiceSelect = document.getElementById('voice-select');
     let langSelect = document.getElementById('voice-lang-select');
-    
     if (!voiceSelect || !langSelect) return;
     
     let selectedLangPref = langSelect.value;
     currentLanguageCode = selectedLangPref === 'de' ? 'de-DE' : 'en-US';
-
     let filteredVoices = voices.filter(voice => voice.lang.startsWith(selectedLangPref));
     voiceSelect.innerHTML = '';
     
     if (filteredVoices.length === 0) {
         let option = document.createElement('option');
-        option.textContent = "Keine passende Hardware-Stimme gefunden";
+        option.textContent = "Hardware-Stimme fehlt";
         option.value = "";
         voiceSelect.appendChild(option);
         selectedVoice = null;
@@ -82,15 +82,13 @@ function initVoices() {
         v.name.toLowerCase().includes('male') || 
         v.name.toLowerCase().includes('mark') || 
         v.name.toLowerCase().includes('stefan') ||
-        v.name.toLowerCase().includes('david') ||
-        (selectedLangPref === 'de' && !v.name.toLowerCase().includes('hedda'))
+        v.name.toLowerCase().includes('david')
     ) || filteredVoices[0];
 
     filteredVoices.forEach((voice) => {
         let option = document.createElement('option');
-        option.textContent = `${voice.name} (${voice.lang})`;
+        option.textContent = `${voice.name}`;
         option.value = voice.name;
-        
         if (voice.name === autoSelectedVoice.name) {
             option.selected = true;
             selectedVoice = voice;
@@ -100,17 +98,14 @@ function initVoices() {
 }
 
 function initEventListeners() {
-    // Modal-Steuerung (Zahnrad)
     document.querySelectorAll('.btn-settings-open').forEach(btn => {
         btn.onclick = () => { document.getElementById('settings-modal').classList.remove('hidden'); };
     });
-    
     const settingsClose = document.getElementById('btn-settings-close');
     if (settingsClose) {
         settingsClose.onclick = () => { document.getElementById('settings-modal').classList.add('hidden'); };
     }
 
-    // Theme-Umschaltung
     setupGroupListeners('group-theme-select', (val, btn) => {
         selectOption('group-theme-select', btn);
         currentTheme = val;
@@ -118,41 +113,19 @@ function initEventListeners() {
         else document.body.classList.remove('light-theme');
     });
 
-    // Sprachausgabe Toggle (Ja/Nein)
     setupGroupListeners('group-toggle-tts', (val, btn) => {
         selectOption('group-toggle-tts', btn);
         isSpeechOutputActive = (val === 'true');
         const subMenu = document.getElementById('sub-voice-settings');
-        if (subMenu) {
-            if(isSpeechOutputActive) subMenu.classList.remove('hidden');
-            else subMenu.classList.add('hidden');
-        }
+        if (subMenu) subMenu.style.display = isSpeechOutputActive ? 'block' : 'none';
     });
 
-    // Spracheingabe Toggle (Ja/Nein)
     setupGroupListeners('group-toggle-stt', (val, btn) => {
         selectOption('group-toggle-stt', btn);
         setSpeechInputState(val === 'true');
     });
 
-    const langSelect = document.getElementById('voice-lang-select');
-    if (langSelect) {
-        langSelect.onchange = () => {
-            initVoices();
-            if (recognition) recognition.lang = langSelect.value === 'de' ? 'de-DE' : 'en-US';
-        };
-    }
-
-    const voiceSelect = document.getElementById('voice-select');
-    if (voiceSelect) {
-        voiceSelect.onchange = function() {
-            let voices = speechSynthesis.getVoices();
-            selectedVoice = voices.find(v => v.name === this.value);
-            speak(langSelect.value === 'de' ? "Stimme gewechselt" : "Voice changed");
-        };
-    }
-
-    // Setup der Core-Game Buttons
+    // Setup Modus Listener
     setupGroupListeners('group-game-mode', (val, btn) => changeGameMode(val, btn));
     setupGroupListeners('group-players', (val, btn) => selectOption('group-players', btn));
     setupGroupListeners('group-input-mode', (val, btn) => selectOption('group-input-mode', btn));
@@ -162,64 +135,70 @@ function initEventListeners() {
     setupGroupListeners('group-fin-range', (val, btn) => selectOption('group-fin-range', btn));
     setupGroupListeners('group-atc-bonus', (val, btn) => selectOption('group-atc-bonus', btn));
     setupGroupListeners('group-sod-darts', (val, btn) => selectOption('group-sod-darts', btn));
-    setupGroupListeners('group-sod-ring', (val, btn) => selectOption('group-sod-ring', btn));
+    setupGroupListeners('group-sod-target-virtual', (val, btn) => selectOption('group-sod-target-virtual', btn));
 
-    for (let slot = 1; slot <= 3; slot++) {
-        for (let mult = 1; mult <= 3; mult++) {
-            let el = document.getElementById(`m${slot}-${mult}`);
-            if(el) el.onclick = () => setMultiplier(slot, mult);
-        }
-    }
+    // CLICK HANDLER FÜR DAS VIRTUELLE EINZEL-DARTS KEYPAD
+    document.getElementById('vmult-1').onclick = () => setVirtualMultiplier(1);
+    document.getElementById('vmult-2').onclick = () => setVirtualMultiplier(2);
+    document.getElementById('vmult-3').onclick = () => setVirtualMultiplier(3);
 
-    const btnStart = document.getElementById('btn-start-game');
-    if (btnStart) btnStart.onclick = startGame;
-    
-    const btnAbort = document.getElementById('btn-abort-game');
-    if (btnAbort) btnAbort.onclick = abortGame;
-    
-    const btnSubmit = document.getElementById('submit-btn');
-    if (btnSubmit) btnSubmit.onclick = submitScore;
-    
-    const btnReset = document.getElementById('btn-reset-game');
-    if (btnReset) btnReset.onclick = resetGame;
+    document.querySelectorAll('.keyboard-grid .numkey, [data-val="bull"], [data-val="0"]').forEach(btn => {
+        btn.onclick = function() {
+            let value = this.getAttribute('data-val');
+            inputVirtualDart(value);
+        };
+    });
 
-    const seg1 = document.getElementById('seg-1');
-    if (seg1) seg1.oninput = function() { handleSegmentAutoJump(this, 'seg-2', 1); };
-    
-    const seg2 = document.getElementById('seg-2');
-    if (seg2) seg2.oninput = function() { handleSegmentAutoJump(this, 'seg-3', 2); };
-    
-    const seg3 = document.getElementById('seg-3');
-    if (seg3) seg3.oninput = function() { handleSegmentAutoJump(this, null, 3); };
+    document.getElementById('vkey-clear-segments').onclick = clearLastVirtualDart;
+
+    // PREVIEW BOXEN KLICKBAR MACHEN (Um Darts gezielt korrigieren zu können)
+    document.getElementById('box-d1').onclick = () => setActiveDartSlot(1);
+    document.getElementById('box-d2').onclick = () => setActiveDartSlot(2);
+    document.getElementById('box-d3').onclick = () => setActiveDartSlot(3);
+
+    // CLICK HANDLER FÜR DAS VIRTUELLE SUMMEN KEYPAD (SET)
+    document.querySelectorAll('.keyboard-grid-sum .sumkey').forEach(btn => {
+        btn.onclick = function() {
+            let num = this.getAttribute('data-num');
+            appendVirtualSum(num);
+        };
+    });
+
+    document.querySelectorAll('.keyboard-grid-shortcuts .shortcut').forEach(btn => {
+        btn.onclick = function() {
+            let exactSum = parseInt(this.getAttribute('data-sum'));
+            setVirtualSum(exactSum);
+        };
+    });
+
+    document.getElementById('vkey-clear-sum').onclick = () => { setVirtualSum(0); };
+    document.getElementById('vkey-submit-sum').onclick = submitScore;
+
+    // Core Actions
+    document.getElementById('btn-start-game').onclick = startGame;
+    document.getElementById('btn-abort-game').onclick = abortGame;
+    document.getElementById('submit-btn').onclick = submitScore;
+    document.getElementById('btn-reset-game').onclick = resetGame;
 }
 
 function setupGroupListeners(groupId, callback) {
     const container = document.getElementById(groupId);
     if (!container) return;
-    const buttons = container.querySelectorAll('.btn-option');
-    buttons.forEach(btn => {
-        btn.onclick = function() {
-            let val = this.getAttribute('data-value');
-            callback(val, this);
-        };
+    container.querySelectorAll('.btn-option').forEach(btn => {
+        btn.onclick = function() { callback(this.getAttribute('data-value'), this); };
     });
 }
 
 function changeFinishingType(val, btn) {
     selectOption('group-fin-type', btn);
     const targetGroup = document.getElementById('group-fin-range');
-    if (targetGroup) {
-        const rangeWrapper = targetGroup.closest('.form-group');
-        if (rangeWrapper) {
-            if (val === 'strict') rangeWrapper.classList.add('hidden'); 
-            else rangeWrapper.classList.remove('hidden');
-        }
+    if (targetGroup && targetGroup.closest('.form-group')) {
+        targetGroup.closest('.form-group').style.display = (val === 'strict') ? 'none' : 'block';
     }
 }
 
 function selectOption(groupId, element) {
-    const buttons = document.querySelectorAll(`#${groupId} .btn-option`);
-    buttons.forEach(btn => btn.classList.remove('active'));
+    document.querySelectorAll(`#${groupId} .btn-option`).forEach(btn => btn.classList.remove('active'));
     element.classList.add('active');
 }
 
@@ -240,8 +219,7 @@ function changeGameMode(mode, element) {
     if (mode === 'x01') document.getElementById('options-x01').classList.remove('hidden');
     else if (mode === 'fin') {
         document.getElementById('options-fin').classList.remove('hidden');
-        document.getElementById('wrapper-players').classList.add('hidden'); 
-        changeFinishingType(getSelectedValue('group-fin-type'), document.querySelector('#group-fin-type .btn-option.active'));
+        document.getElementById('wrapper-players').classList.add('hidden');
     }
     else if (mode === 'atc') document.getElementById('options-atc').classList.remove('hidden');
     else if (mode === 'sod') {
@@ -250,11 +228,85 @@ function changeGameMode(mode, element) {
     }
 }
 
+// LOGIK FÜR DAS VIRTUELLE EINZEL-DARTS KEYPAD
+function setVirtualMultiplier(mValue) {
+    currentVirtualSelectedMultiplier = mValue;
+    document.querySelectorAll('[id^="vmult-"]').forEach(btn => btn.classList.remove('active'));
+    document.getElementById(`vmult-${mValue}`).classList.add('active');
+}
+
+function setActiveDartSlot(slotNum) {
+    currentActiveDartSlot = slotNum;
+    document.querySelectorAll('.preview-box').forEach(box => box.classList.remove('active-slot'));
+    const activeBox = document.getElementById(`box-d${slotNum}`);
+    if (activeBox) activeBox.classList.add('active-slot');
+}
+
+function inputVirtualDart(field) {
+    if (isLockingInput) return;
+    document.getElementById('error-message').innerText = "";
+
+    let m = currentVirtualSelectedMultiplier;
+    if (field === "bull") {
+        if (m === 3) m = 2; // Es gibt kein Triple Bull, Fallback auf Double Bull
+    }
+    if (field === "0") m = 1;
+
+    let parsed = parseSegmentData(field, m);
+    if (!parsed) return;
+
+    virtualDartData[currentActiveDartSlot] = {
+        val: parsed.val,
+        label: parsed.label,
+        rawField: field,
+        m: m
+    };
+
+    updateDartPreviewDOM();
+    checkLiveBustSegment(currentActiveDartSlot);
+
+    // Auto-Jump zum nächsten freien Dart-Slot
+    if (currentActiveDartSlot < 3) {
+        setActiveDartSlot(currentActiveDartSlot + 1);
+    }
+    setVirtualMultiplier(1); // Reset auf Single für den nächsten Wurf
+}
+
+function clearLastVirtualDart() {
+    virtualDartData[currentActiveDartSlot] = { val: null, label: "-", rawField: "", m: 1 };
+    updateDartPreviewDOM();
+    document.getElementById('error-message').innerText = "";
+}
+
+function updateDartPreviewDOM() {
+    for (let slot = 1; slot <= 3; slot++) {
+        const box = document.getElementById(`box-d${slot}`);
+        if(box) box.innerText = `Dart ${slot}: ${virtualDartData[slot].label}`;
+    }
+}
+
+// LOGIK FÜR DAS VIRTUELLE SUMMEN KEYPAD (SET)
+function appendVirtualSum(digit) {
+    let currentStr = virtualSumValue.toString();
+    if (currentStr === "0") currentStr = "";
+    currentStr += digit;
+    let newSum = parseInt(currentStr) || 0;
+    if (newSum <= 180) {
+        setVirtualSum(newSum);
+    }
+}
+
+function setVirtualSum(value) {
+    virtualSumValue = value;
+    const disp = document.getElementById('virtual-sum-display');
+    if (disp) disp.innerText = virtualSumValue;
+}
+
 // SPRACHAUSGABE (TTS)
 function speak(text) {
     if (!isSpeechOutputActive) return;
     let utterance = new SpeechSynthesisUtterance(text);
-    utterance.lang = currentLanguageCode; 
+    utterance.lang = currentLanguageCode;
     if (selectedVoice) utterance.voice = selectedVoice;
     window.speechSynthesis.speak(utterance);
 }
@@ -262,7 +314,6 @@ function speak(text) {
 function speakTurnResult(score, rest) {
     if (!isSpeechOutputActive) return;
     window.speechSynthesis.cancel();
-
     let scoreUtterance = new SpeechSynthesisUtterance(score.toString());
     scoreUtterance.lang = currentLanguageCode;
     if (selectedVoice) scoreUtterance.voice = selectedVoice;
@@ -270,8 +321,7 @@ function speakTurnResult(score, rest) {
     scoreUtterance.onend = () => {
         if (typeof rest === 'number' && rest > 0) {
             let isEn = currentLanguageCode.startsWith('en');
-            let text = isEn ? "Remaining " + rest : "Rest " + rest;
-            let restUtterance = new SpeechSynthesisUtterance(text);
+            let restUtterance = new SpeechSynthesisUtterance(isEn ? "Remaining " + rest : "Rest " + rest);
             restUtterance.lang = currentLanguageCode;
             if (selectedVoice) restUtterance.voice = selectedVoice;
             window.speechSynthesis.speak(restUtterance);
@@ -298,11 +348,7 @@ if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
         if (icon) icon.classList.add('listening'); 
     };
     recognition.onend = () => {
-        if (isSpeechInputActive) recognition.start(); 
-        else {
-            const icon = document.getElementById('icon-listening-modal');
-            if (icon) icon.classList.remove('listening');
-        }
+        if (isSpeechInputActive) recognition.start();
     };
     recognition.onresult = (event) => {
         let resultText = event.results[event.results.length - 1][0].transcript.toLowerCase().trim();
@@ -311,17 +357,12 @@ if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
 }
 
 function setSpeechInputState(activate) {
-    if (!recognition) {
-        alert("Spracherkennung wird auf diesem Browser nicht unterstützt.");
-        return;
-    }
+    if (!recognition) return;
     isSpeechInputActive = activate;
     if (isSpeechInputActive) {
         try { recognition.start(); } catch(e){}
     } else {
         recognition.stop();
-        const icon = document.getElementById('icon-listening-modal');
-        if (icon) icon.classList.remove('listening');
     }
 }
 
@@ -329,45 +370,27 @@ function verarbeiteSprachBefehl(phrase) {
     if (document.getElementById('spielseite').classList.contains('hidden') || isLockingInput) return;
     phrase = phrase.replace("dreifach", "triple").replace("doppel", "double").replace("drei", "3");
 
-    let targetSlot = 1;
-    if (document.getElementById('seg-1').value !== "") targetSlot = 2;
-    if (document.getElementById('seg-2').value !== "") targetSlot = 3;
-    if (document.getElementById('seg-3').value !== "") return; 
-
-    let mult = 1; let field = "";
-    if (phrase.includes("triple") || phrase.includes("treble")) mult = 3;
-    else if (phrase.includes("double")) mult = 2;
+    let m = 1; let field = "";
+    if (phrase.includes("triple") || phrase.includes("treble")) m = 3;
+    else if (phrase.includes("double")) m = 2;
 
     let matchZahl = phrase.match(/\d+/);
     if (matchZahl) field = matchZahl[0];
-    else if (phrase.includes("double bull")) { mult = 2; field = "bull"; }
-    else if (phrase.includes("bull")) { mult = 1; field = "bull"; }
-    else if (phrase.includes("kein treffer") || phrase.includes("null") || phrase.includes("miss")) { field = "0"; mult = 1; }
+    else if (phrase.includes("double bull")) { m = 2; field = "bull"; }
+    else if (phrase.includes("bull")) { m = 1; field = "bull"; }
+    else if (phrase.includes("kein treffer") || phrase.includes("null") || phrase.includes("miss")) { field = "0"; m = 1; }
 
     if (field !== "") {
-        setMultiplier(targetSlot, mult);
-        let inputField = document.getElementById(`seg-${targetSlot}`);
-        inputField.value = field;
-        handleSegmentAutoJump(inputField, targetSlot < 3 ? `seg-${targetSlot+1}` : null, targetSlot);
+        currentVirtualSelectedMultiplier = m;
+        inputVirtualDart(field);
     }
-}
-
-function setMultiplier(dartNum, multValue) {
-    if (isLockingInput) return;
-    currentMultipliers[dartNum] = multValue;
-    for (let i = 1; i <= 3; i++) {
-        const btn = document.getElementById(`m${dartNum}-${i}`);
-        if (btn) btn.classList.remove('active');
-    }
-    const targetBtn = document.getElementById(`m${dartNum}-${multValue}`);
-    if (targetBtn) targetBtn.classList.add('active');
 }
 
 function generateRandomFinish() {
     if (finTypeSetting === 'strict') {
         let validTargets = [];
         for (let i = 2; i <= 40; i += 2) validTargets.push(i);
-        validTargets.push(50); 
+        validTargets.push(50);
         return validTargets[Math.floor(Math.random() * validTargets.length)];
     }
     let range = getSelectedValue('group-fin-range');
@@ -392,20 +415,25 @@ function startGame() {
     document.getElementById('p1-sub').classList.add('hidden');
     document.getElementById('p1-title').innerText = "Spieler 1";
     document.getElementById('h1-header').innerText = "Verlauf S1";
+    document.getElementById('submit-btn').classList.remove('hidden');
 
     if (activeGlobalMode === 'x01') {
         initialPoints = parseInt(getSelectedValue('group-points'));
         scores[1] = initialPoints; scores[2] = initialPoints;
         document.getElementById('game-title').innerText = `${initialPoints}er X01 Match`;
-        if (inputMode === 'set') document.getElementById('set-input-container').classList.remove('hidden');
-        else document.getElementById('segment-input-container').classList.remove('hidden');
+        if (inputMode === 'set') {
+            document.getElementById('set-input-container').classList.remove('hidden');
+            document.getElementById('submit-btn').classList.add('hidden'); // Der grüne Checkmark-Button übernimmt
+        } else {
+            document.getElementById('segment-input-container').classList.remove('hidden');
+        }
     } else if (activeGlobalMode === 'fin') {
         finAttempts = 0;
-        finTypeSetting = getSelectedValue('group-fin-type'); 
+        finTypeSetting = getSelectedValue('group-fin-type');
         finTargetScore = generateRandomFinish();
         scores[1] = finTargetScore;
         
-        let typeLabel = finTypeSetting === 'strict' ? 'Exakt (Best of 3)' : 'Realistisch';
+        let typeLabel = finTypeSetting === 'strict' ? 'Exakt' : 'Realistisch';
         document.getElementById('game-title').innerText = `Finishing (${typeLabel})`;
         document.getElementById('p1-title').innerText = "Target Finish";
         document.getElementById('h1-header').innerText = "Würfe-Log";
@@ -438,7 +466,7 @@ function startGame() {
         document.getElementById('p2-history-box').classList.add('hidden');
     }
 
-    clearInputFields();
+    resetVirtualState();
     document.getElementById('startseite').classList.add('hidden');
     document.getElementById('spielseite').classList.remove('hidden');
     
@@ -455,44 +483,43 @@ function abortGame() {
     }
 }
 
-function clearInputFields() {
-    const setIn = document.getElementById('darts-input-set');
-    if (setIn) setIn.value = "";
-    
-    const s1 = document.getElementById('seg-1'); if(s1) s1.value = "";
-    const s2 = document.getElementById('seg-2'); if(s2) s2.value = "";
-    const s3 = document.getElementById('seg-3'); if(s3) s3.value = "";
-    
-    setMultiplier(1, 1); setMultiplier(2, 1); setMultiplier(3, 1);
-    drawLiveBoard();
+function resetVirtualState() {
+    virtualDartData = {
+        1: { val: 0, label: "-", rawField: "", m: 1 },
+        2: { val: 0, label: "-", rawField: "", m: 1 },
+        3: { val: 0, label: "-", rawField: "", m: 1 }
+    };
+    updateDartPreviewDOM();
+    setActiveDartSlot(1);
+    setVirtualMultiplier(1);
+    setVirtualSum(0);
 }
 
 function parseSegmentData(fieldRaw, mult) {
-    if (!fieldRaw) return { val: 0, label: "0" };
+    if (!fieldRaw || fieldRaw === "") return { val: 0, label: "0" };
     let clean = fieldRaw.trim().toLowerCase();
-    if (clean === "" || clean === "0") return { val: 0, label: "0" };
-    if (clean === "bull" || clean === "25" || clean === "b") {
-        if (mult === 2) return { val: 50, label: "D-Bull", key: "d-bull", base: "bull", m: 2 };
-        return { val: 25, label: "Bull", key: "bull", base: "bull", m: 1 };
+    if (clean === "0") return { val: 0, label: "0" };
+    if (clean === "bull") {
+        if (mult === 2) return { val: 50, label: "D-Bull", key: "d-bull" };
+        return { val: 25, label: "Bull", key: "bull" };
     }
     let num = parseInt(clean);
     if (isNaN(num) || num < 1 || num > 20) return null;
-    if (mult === 3) return { val: num * 3, label: `T${num}`, key: `T${num}`, base: num.toString(), m: 3 };
-    if (mult === 2) return { val: num * 2, label: `D${num}`, key: `D${num}`, base: num.toString(), m: 2 };
-    return { val: num, label: `S${num}`, key: `S${num}`, base: num.toString(), m: 1 };
+    if (mult === 3) return { val: num * 3, label: `T${num}`, key: `T${num}` };
+    if (mult === 2) return { val: num * 2, label: `D${num}`, key: `D${num}` };
+    return { val: num, label: `S${num}`, key: `S${num}` };
 }
 
 function handleBustProcess(currentScore, scoredPoints, originalDetails) {
     let isEn = currentLanguageCode.startsWith('en');
     let text = isEn ? "Bust!" : "Überworfen!";
-    
     document.getElementById('error-message').innerText = text;
     speak(text);
     
     if (activeGlobalMode === 'fin') {
         finAttempts++;
         addHistoryEntry(1, scoredPoints, finTargetScore, originalDetails, true);
-        scores[1] = finTargetScore; 
+        scores[1] = finTargetScore;
         document.getElementById('p1-score').innerText = scores[1];
         document.getElementById('p1-sub').innerText = `Versuch: ${finAttempts + 1}`;
     } else {
@@ -503,20 +530,20 @@ function handleBustProcess(currentScore, scoredPoints, originalDetails) {
     setTimeout(() => {
         document.getElementById('error-message').innerText = "";
         isLockingInput = false;
-        if (activeGlobalMode !== 'fin') nextPlayer(); 
-        clearInputFields();
-    }, 2000);
+        if (activeGlobalMode !== 'fin') nextPlayer();
+        resetVirtualState();
+    }, 1800);
 }
 
 function checkLiveBustSegment(currentDartIndex) {
     if (activeGlobalMode !== 'x01' && activeGlobalMode !== 'fin') return false;
-    if (activeGlobalMode === 'fin' && finTypeSetting === 'strict') return false; 
+    if (activeGlobalMode === 'fin' && finTypeSetting === 'strict') return false;
 
-    let d1Data = parseSegmentData(document.getElementById('seg-1').value, currentMultipliers[1]) || { val: 0, label: "0" };
-    let d2Data = parseSegmentData(document.getElementById('seg-2').value, currentMultipliers[2]) || { val: 0, label: "0" };
-    let d3Data = parseSegmentData(document.getElementById('seg-3').value, currentMultipliers[3]) || { val: 0, label: "0" };
+    let d1 = virtualDartData[1].val || 0;
+    let d2 = virtualDartData[2].val || 0;
+    let d3 = virtualDartData[3].val || 0;
 
-    let runningSum = d1Data.val + d2Data.val + d3Data.val;
+    let runningSum = d1 + d2 + d3;
     let currentScore = scores[activePlayer];
     let remaining = currentScore - runningSum;
     
@@ -524,12 +551,12 @@ function checkLiveBustSegment(currentDartIndex) {
     let isBust = remaining < 0 || (remaining === 1 && modeOut === 'double');
 
     if (remaining === 0 && modeOut === 'double') {
-        let activeData = (currentDartIndex === 3) ? d3Data : ((currentDartIndex === 2) ? d2Data : d1Data);
+        let activeData = virtualDartData[currentDartIndex];
         if (activeData.key && !activeData.key.startsWith('D') && activeData.key !== 'd-bull') isBust = true;
     }
 
     if (isBust) {
-        handleBustProcess(currentScore, runningSum, `${d1Data.label}/${d2Data.label}/${d3Data.label}`);
+        handleBustProcess(currentScore, runningSum, `${virtualDartData[1].label}/${virtualDartData[2].label}/${virtualDartData[3].label}`);
         return true;
     }
     return false;
@@ -550,23 +577,23 @@ function executeX01Turn() {
     let currentScore = scores[activePlayer];
 
     if (inputMode === 'set') {
-        totalScore = parseInt(document.getElementById('darts-input-set').value) || 0;
+        totalScore = virtualSumValue;
         let remaining = currentScore - totalScore;
         if (remaining < 0 || (remaining === 1 && outMode === 'double') || (remaining === 0 && outMode === 'double' && totalScore < 2)) {
-            handleBustProcess(currentScore, totalScore, "Set"); return;
+            handleBustProcess(currentScore, totalScore, "Summe"); return;
         }
-        scores[activePlayer] = remaining; scoreDetails = "3 Darts";
+        scores[activePlayer] = remaining; scoreDetails = "Aufnahme";
     } else {
-        let d1Data = parseSegmentData(document.getElementById('seg-1').value, currentMultipliers[1]) || {val:0, label:"0"};
-        let d2Data = parseSegmentData(document.getElementById('seg-2').value, currentMultipliers[2]) || {val:0, label:"0"};
-        let d3Data = parseSegmentData(document.getElementById('seg-3').value, currentMultipliers[3]) || {val:0, label:"0"};
+        let d1 = virtualDartData[1].val || 0;
+        let d2 = virtualDartData[2].val || 0;
+        let d3 = virtualDartData[3].val || 0;
 
-        totalScore = d1Data.val + d2Data.val + d3Data.val;
-        scoreDetails = `${d1Data.label}/${d2Data.label}/${d3Data.label}`;
+        totalScore = d1 + d2 + d3;
+        scoreDetails = `${virtualDartData[1].label}/${virtualDartData[2].label}/${virtualDartData[3].label}`;
         let remaining = currentScore - totalScore;
         let isBust = remaining < 0 || (remaining === 1 && outMode === 'double');
         if (remaining === 0 && outMode === 'double') {
-            let last = d3Data.label !== "0" ? d3Data : (d2Data.label !== "0" ? d2Data : d1Data);
+            let last = virtualDartData[3].label !== "-" ? virtualDartData[3] : (virtualDartData[2].label !== "-" ? virtualDartData[2] : virtualDartData[1]);
             if (!last.key || (!last.key.startsWith('D') && last.key !== 'd-bull')) isBust = true;
         }
         if (isBust) { handleBustProcess(currentScore, totalScore, scoreDetails); return; }
@@ -575,136 +602,96 @@ function executeX01Turn() {
 
     document.getElementById(`p${activePlayer}-score`).innerText = scores[activePlayer];
     addHistoryEntry(activePlayer, totalScore, scores[activePlayer], scoreDetails, false);
-    
     speakTurnResult(totalScore, scores[activePlayer]);
 
     if (scores[activePlayer] === 0) { showVictory(); return; }
-    nextPlayer(); clearInputFields();
+    nextPlayer(); resetVirtualState();
 }
 
 function executeFinishingTurn() {
-    let d1Data = parseSegmentData(document.getElementById('seg-1').value, currentMultipliers[1]) || {val:0, label:"0"};
-    let d2Data = parseSegmentData(document.getElementById('seg-2').value, currentMultipliers[2]) || {val:0, label:"0"};
-    let d3Data = parseSegmentData(document.getElementById('seg-3').value, currentMultipliers[3]) || {val:0, label:"0"};
-
-    let darts = [d1Data, d2Data, d3Data];
+    let d1 = virtualDartData[1];
+    let d2 = virtualDartData[2];
+    let d3 = virtualDartData[3];
+    let darts = [d1, d2, d3];
     let originalTarget = finTargetScore;
     let isEn = currentLanguageCode.startsWith('en');
 
     if (finTypeSetting === 'strict') {
         let isCheckout = false;
-
         for (let i = 0; i < darts.length; i++) {
-            let d = darts[i];
-            if (d.val === originalTarget && d.key && (d.key.startsWith('D') || d.key === 'd-bull')) {
-                isCheckout = true;
-                break;
+            if (darts[i].val === originalTarget && darts[i].key && (darts[i].key.startsWith('D') || darts[i].key === 'd-bull')) {
+                isCheckout = true; break;
             }
         }
-
-        let scoreDetails = `${d1Data.label}/${d2Data.label}/${d3Data.label}`;
-
+        let scoreDetails = `${d1.label}/${d2.label}/${d3.label}`;
         if (isCheckout) {
-            finAttempts++;
-            scores[1] = 0;
-            addHistoryEntry(1, originalTarget, 0, scoreDetails, false);
-            
+            finAttempts++; histories[1] = [];
             window.speechSynthesis.cancel();
             speak(isEn ? `Leg finished!` : `Leg beendet!`);
-            alert(isEn ? `Nice! Checked ${originalTarget} in ${finAttempts} throws.` : `Sauber! Du hast das Finish ${originalTarget} in ${finAttempts} Aufnahmen gecheckt.`);
-            
-            finAttempts = 0;
-            finTargetScore = generateRandomFinish();
-            scores[1] = finTargetScore;
+            alert(isEn ? `Checked ${originalTarget} in ${finAttempts} throws.` : `Sauber! Du hast das Finish ${originalTarget} in ${finAttempts} Aufnahmen gecheckt.`);
+            finAttempts = 0; finTargetScore = generateRandomFinish(); scores[1] = finTargetScore;
             document.getElementById('p1-score').innerText = scores[1];
             document.getElementById('p1-sub').innerText = `Versuch: 1`;
             document.getElementById('p1-history-list').innerHTML = "";
-            histories[1] = [];
-            
             speak(isEn ? "Next target is " + finTargetScore : "Nächstes Ziel ist " + finTargetScore);
-            clearInputFields();
-            return;
         } else {
             finAttempts++;
             addHistoryEntry(1, isEn ? "No Check" : "Kein Check", finTargetScore, scoreDetails, false);
             document.getElementById('p1-sub').innerText = `Versuch: ${finAttempts + 1}`;
             speak(isEn ? "No checkout" : "Kein Checkout");
-            clearInputFields();
-            return;
         }
+        resetVirtualState(); return;
     }
 
     let runningScore = finTargetScore;
-    let isCheckout = false;
-    let totalScoredThisTurn = 0;
-    let displayLabels = [];
+    let isCheckout = false; let totalScoredThisTurn = 0; let displayLabels = [];
 
     for (let i = 0; i < darts.length; i++) {
         let d = darts[i];
         displayLabels.push(d.label);
-        
-        if (d.label === "0" && i > 0 && darts[i-1].label === "0" && (i === 2 || darts[2].label === "0")) {
-            continue; 
-        }
-
         runningScore -= d.val;
         totalScoredThisTurn += d.val;
 
         if (runningScore === 0) {
             if (d.key && (d.key.startsWith('D') || d.key === 'd-bull')) {
-                isCheckout = true;
-                break; 
+                isCheckout = true; break;
             }
         }
-
         if (runningScore < 0 || runningScore === 1 || (runningScore === 0 && !isCheckout)) {
-            handleBustProcess(originalTarget, totalScoredThisTurn, displayLabels.join('/'));
-            return;
+            handleBustProcess(originalTarget, totalScoredThisTurn, displayLabels.join('/')); return;
         }
     }
 
     let scoreDetails = displayLabels.join('/');
-
     if (isCheckout) {
-        finAttempts++;
-        scores[1] = 0;
-        addHistoryEntry(1, originalTarget, 0, scoreDetails, false);
-        
+        finAttempts++; histories[1] = [];
         window.speechSynthesis.cancel();
         speak(isEn ? `Leg finished!` : `Leg beendet!`);
         alert(isEn ? `Nice! Checked ${originalTarget} in ${finAttempts} throws.` : `Sauber! Du hast das Finish ${originalTarget} in ${finAttempts} Aufnahmen gecheckt.`);
-        
-        finAttempts = 0;
-        finTargetScore = generateRandomFinish();
-        scores[1] = finTargetScore;
+        finAttempts = 0; finTargetScore = generateRandomFinish(); scores[1] = finTargetScore;
         document.getElementById('p1-score').innerText = scores[1];
         document.getElementById('p1-sub').innerText = `Versuch: 1`;
         document.getElementById('p1-history-list').innerHTML = "";
-        histories[1] = [];
         speak(isEn ? "Next target is " + finTargetScore : "Nächstes Ziel ist " + finTargetScore);
     } else {
-        finAttempts++;
-        scores[1] = runningScore;
+        finAttempts++; scores[1] = runningScore;
         document.getElementById('p1-score').innerText = scores[1];
         document.getElementById('p1-sub').innerText = `Versuch: ${finAttempts + 1}`;
         addHistoryEntry(1, totalScoredThisTurn, scores[1], scoreDetails, false);
         speakTurnResult(totalScoredThisTurn, scores[1]);
     }
-    
-    clearInputFields();
+    resetVirtualState();
 }
 
 function executeATCTurn() {
-    let d1Data = parseSegmentData(document.getElementById('seg-1').value, currentMultipliers[1]) || {val:0, base:"", label:"0"};
-    let d2Data = parseSegmentData(document.getElementById('seg-2').value, currentMultipliers[2]) || {val:0, base:"", label:"0"};
-    let d3Data = parseSegmentData(document.getElementById('seg-3').value, currentMultipliers[3]) || {val:0, base:"", label:"0"};
-
     let bonusMode = getSelectedValue('group-atc-bonus') === 'bonus';
-    let darts = [d1Data, d2Data, d3Data]; let hits = 0;
+    let darts = [virtualDartData[1], virtualDartData[2], virtualDartData[3]];
+    let hits = 0;
 
     darts.forEach(d => {
         let targetString = scores[activePlayer] === 21 ? "bull" : scores[activePlayer].toString();
-        if (d.base === targetString) {
+        let currentDartBase = d.rawField === "bull" ? "bull" : d.rawField;
+        if (currentDartBase === targetString && d.val > 0) {
             let steps = bonusMode ? d.m : 1;
             scores[activePlayer] += steps; hits += steps;
             if (scores[activePlayer] > 21) scores[activePlayer] = 21;
@@ -712,30 +699,25 @@ function executeATCTurn() {
     });
 
     document.getElementById(`p${activePlayer}-score`).innerText = scores[activePlayer] === 21 ? "BULL" : scores[activePlayer];
-    
     let isEn = currentLanguageCode.startsWith('en');
     let hitLabel = isEn ? `${hits} Hits` : `${hits} Treffer`;
-    addHistoryEntry(activePlayer, hitLabel, scores[activePlayer], `${d1Data.label}/${d2Data.label}/${d3Data.label}`, false);
+    addHistoryEntry(activePlayer, hitLabel, scores[activePlayer], `${virtualDartData[1].label}/${virtualDartData[2].label}/${virtualDartData[3].label}`, false);
     
     let targetText = scores[activePlayer] === 21 ? "Bullseye" : scores[activePlayer].toString();
-    let speechNextText = isEn ? "Target is now " + targetText : "Ziel ist jetzt " + targetText;
-    speakTurnResult(hitLabel, speechNextText);
+    speakTurnResult(hitLabel, isEn ? "Target is now " + targetText : "Ziel ist jetzt " + targetText);
 
     if (scores[activePlayer] === 21) { showVictory(); return; }
-    nextPlayer(); clearInputFields();
+    nextPlayer(); resetVirtualState();
 }
 
 function executeSODTurn() {
-    let d1Data = parseSegmentData(document.getElementById('seg-1').value, currentMultipliers[1]) || {val:0, base:"", m:1, label:"0"};
-    let d2Data = parseSegmentData(document.getElementById('seg-2').value, currentMultipliers[2]) || {val:0, base:"", m:1, label:"0"};
-    let d3Data = parseSegmentData(document.getElementById('seg-3').value, currentMultipliers[3]) || {val:0, base:"", m:1, label:"0"};
-
-    let targetField = document.getElementById('sod-target-field').value;
+    let targetField = getSelectedValue('group-sod-target-virtual');
     let targetRing = getSelectedValue('group-sod-ring');
-    let darts = [d1Data, d2Data, d3Data]; let hitCount = 0;
+    let darts = [virtualDartData[1], virtualDartData[2], virtualDartData[3]];
+    let hitCount = 0;
 
     darts.forEach(d => {
-        let isField = d.base === targetField;
+        let isField = d.rawField === targetField;
         let isRing = (targetRing === 'single' && d.m === 1) || (targetRing === 'double' && d.m === 2) || (targetRing === 'treble' && d.m === 3);
         if (isField && isRing) hitCount++;
     });
@@ -745,18 +727,18 @@ function executeSODTurn() {
     
     let isEn = currentLanguageCode.startsWith('en');
     let hitLabel = isEn ? `${hitCount} Hits` : `${hitCount} Treffer`;
-    addHistoryEntry(1, hitLabel, scores[1], `${d1Data.label}/${d2Data.label}/${d3Data.label}`, false);
-    
-    let speechDartsLeft = isEn ? scores[1] + " darts remaining" : scores[1] + " Pfeile verbleibend";
-    speakTurnResult(hitLabel, speechDartsLeft);
+    addHistoryEntry(1, hitLabel, scores[1], `${virtualDartData[1].label}/${virtualDartData[2].label}/${virtualDartData[3].label}`, false);
+    speakTurnResult(hitLabel, isEn ? scores[1] + " darts remaining" : scores[1] + " Pfeile verbleibend");
 
     if (scores[1] <= 0) { showVictory(); return; }
-    clearInputFields();
+    resetVirtualState();
 }
 
 function addHistoryEntry(player, score, rest, details, isBust) {
     histories[player].unshift({ score, rest, details, isBust });
-    const tbody = document.getElementById(`p${player}-history-list`); tbody.innerHTML = "";
+    const tbody = document.getElementById(`p${player}-history-list`);
+    if(!tbody) return;
+    tbody.innerHTML = "";
     histories[player].forEach((item, index) => {
         let dartsThrown = (histories[player].length - index) * 3;
         let displayScore = item.isBust ? `Bust` : item.score;
@@ -774,28 +756,12 @@ function nextPlayer() {
 function showVictory() {
     document.getElementById('spielseite').classList.add('hidden');
     document.getElementById('abschlussseite').classList.remove('hidden');
-    let isEn = currentLanguageCode.startsWith('en');
-    speak(isEn ? "Game shot and match!" : "Spiel und Match!");
+    speak(currentLanguageCode.startsWith('en') ? "Game shot and match!" : "Spiel und Match!");
 }
 
 function resetGame() {
     document.getElementById('abschlussseite').classList.add('hidden');
     document.getElementById('startseite').classList.remove('hidden');
-}
-
-function handleSegmentAutoJump(currentInput, nextInputId, dartNum) {
-    let raw = currentInput.value.toLowerCase();
-    if (raw.endsWith('d')) { setMultiplier(dartNum, 2); currentInput.value = raw.slice(0, -1); return; }
-    if (raw.endsWith('t')) { setMultiplier(dartNum, 3); currentInput.value = raw.slice(0, -1); return; }
-    
-    let data = parseSegmentData(currentInput.value, currentMultipliers[dartNum]);
-    if (data && (currentInput.value.length >= 2 || parseInt(currentInput.value) > 2 || raw === 'b')) {
-        let wasBust = checkLiveBustSegment(dartNum);
-        if (!wasBust && nextInputId) {
-            const nextEl = document.getElementById(nextInputId);
-            if (nextEl) nextEl.focus();
-        }
-    }
 }
 
 function drawLiveBoard() {

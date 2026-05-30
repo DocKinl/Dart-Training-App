@@ -1091,4 +1091,55 @@ function showVictory(winnerId) {
     let p2Avg = matchStats[2].totalDarts > 0 ? ((matchStats[2].totalPoints / matchStats[2].totalDarts) * 3).toFixed(1) : "0.0";
     
     let p1F9 = matchStats[1].first9Darts > 0 ? ((matchStats[1].first9Points / matchStats[1].first9Darts) * 3).toFixed(1) : "0.0";
-    let p2F9 = matchStats[2].first9Darts > 0 ? ((matchStats
+    let p2F9 = matchStats[2].first9Darts > 0 ? ((matchStats[2].first9Points / matchStats[2].first9Darts) * 3).toFixed(1) : "0.0";
+
+    let p1Shortest = matchStats[1].shortestLeg === 999 ? "-" : `${matchStats[1].shortestLeg} Darts`;
+    let p2Shortest = matchStats[2].shortestLeg === 999 ? "-" : `${matchStats[2].shortestLeg} Darts`;
+
+    const summaryBody = document.getElementById('summary-stats-body');
+    summaryBody.innerHTML = `
+        <tr><td>3-Dart-Average (Ø3)</td><td><b>${p1Avg}</b></td><td><b>${p2Avg}</b></td></tr>
+        <tr><td>First 9 Average (Ø3)</td><td>${p1F9}</td><td>${p2F9}</td></tr>
+        <tr><td>Höchste Aufnahme</td><td>${matchStats[1].highestTurn}</td><td>${matchStats[2].highestTurn}</td></tr>
+        <tr><td>Höchstes Checkout</td><td>${matchStats[1].highestFinish}</td><td>${matchStats[2].highestFinish}</td></tr>
+        <tr><td>Shortest Leg</td><td>${p1Shortest}</td><td>${p2Shortest}</td></tr>
+        <tr><td>100+ / 140+ / 180er</td><td>${matchStats[1].c100} / ${matchStats[1].c140} / ${matchStats[1].c180}</td><td>${matchStats[2].c100} / ${matchStats[2].c140} / ${matchStats[2].c180}</td></tr>
+    `;
+
+    if (activeGlobalMode === 'x01') {
+        saveMatchToLocalStorage(parseFloat(p1Avg), matchStats[1].highestTurn, matchStats[1].highestFinish, matchStats[1].c180);
+    }
+
+    speak(currentLanguageCode.startsWith('en') ? "Game shot and match!" : "Spiel und Match!");
+}
+
+function saveMatchToLocalStorage(avg, highTurn, highFinish, count180s) {
+    let raw = localStorage.getItem('docKinl_dart_stats');
+    let stats = raw ? JSON.parse(raw) : { totalGames: 0, sumAvg: 0, highestTurn: 0, highestFinish: 0, total180s: 0 };
+    
+    stats.totalGames += 1;
+    stats.sumAvg += avg;
+    if(highTurn > stats.highestTurn) stats.highestTurn = highTurn;
+    if(highFinish > stats.highestFinish) stats.highestFinish = highFinish;
+    stats.total180s += count180s;
+
+    localStorage.setItem('docKinl_dart_stats', JSON.stringify(stats));
+}
+
+function openStatsModal() {
+    let raw = localStorage.getItem('docKinl_dart_stats');
+    let stats = raw ? JSON.parse(raw) : { totalGames: 0, sumAvg: 0, highestTurn: 0, highestFinish: 0, total180s: 0 };
+    
+    document.getElementById('stat-total-games').innerText = stats.totalGames;
+    document.getElementById('stat-alltime-avg').innerText = stats.totalGames > 0 ? (stats.sumAvg / stats.totalGames).toFixed(1) : "0.0";
+    document.getElementById('stat-highest-turn').innerText = stats.highestTurn;
+    document.getElementById('stat-highest-co').innerText = stats.highestFinish;
+    document.getElementById('stat-total-180s').innerText = stats.total180s;
+
+    document.getElementById('stats-modal').classList.remove('hidden');
+}
+
+function resetGame() {
+    document.getElementById('abschlussseite').classList.add('hidden');
+    document.getElementById('startseite').classList.remove('hidden');
+}

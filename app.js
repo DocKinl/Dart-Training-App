@@ -9,8 +9,8 @@ let outMode = 'double';
 let isCheckoutHelperActive = true;
 
 // Match-Struktur Variablen
-let matchType = 'legs'; // 'legs' oder 'sets'
-let matchTarget = 1; // Best of target
+let matchType = 'legs'; 
+let matchTarget = 5; 
 let scores = { 1: 501, 2: 501 };
 let legs = { 1: 0, 2: 0 };
 let sets = { 1: 0, 2: 0 };
@@ -19,7 +19,7 @@ let histories = { 1: [], 2: [] };
 let activePlayer = 1;
 let isLockingInput = false;
 
-// Tracker für erweiterte Spielzusammenfassungen (Laufendes Leg & Match-Akkumulatoren)
+// Tracker für Statistiken
 let matchStats = {
     1: { totalPoints: 0, totalDarts: 0, first9Points: 0, first9Darts: 0, turns: 0, c100: 0, c140: 0, c180: 0, highestTurn: 0, highestFinish: 0, shortestLeg: 999 },
     2: { totalPoints: 0, totalDarts: 0, first9Points: 0, first9Darts: 0, turns: 0, c100: 0, c140: 0, c180: 0, highestTurn: 0, highestFinish: 0, shortestLeg: 999 }
@@ -41,14 +41,13 @@ let finAttempts = 0;
 let finTargetScore = 0;
 let finTypeSetting = 'realistic';
 
-// System-Optionen (Standardwerte)
+// System-Optionen
 let isSpeechOutputActive = true;
 let currentTheme = 'dark';
 
 const invalidFinishes = [169, 168, 166, 165, 163, 162, 159];
 const impossibleScores = [179, 178, 176, 175, 173, 172, 169, 166, 163, 162, 159];
 
-// Checkout-Wege Wörterbuch für den Sprach-Helper
 const checkoutRoutes = {
     170: ["T20", "T20", "D50"], 167: ["T20", "T19", "D50"], 164: ["T20", "T18", "D50"], 161: ["T20", "T17", "D50"],
     160: ["T20", "T20", "D20"], 158: ["T20", "T20", "D19"], 157: ["T20", "T19", "D20"], 156: ["T20", "T20", "D18"],
@@ -158,7 +157,6 @@ function initEventListeners() {
         settingsClose.onclick = () => { document.getElementById('settings-modal').classList.add('hidden'); };
     }
 
-    // Alltime Stats Trigger
     document.getElementById('btn-open-stats').onclick = openStatsModal;
     document.getElementById('btn-stats-close').onclick = () => document.getElementById('stats-modal').classList.add('hidden');
     document.getElementById('btn-clear-stats').onclick = () => {
@@ -194,13 +192,51 @@ function initEventListeners() {
         else document.getElementById('options-bot').classList.add('hidden');
     });
     
+    // Config Schieberegler Ein- und Ausblendung
     setupGroupListeners('group-match-type', (val, btn) => {
         selectOption('group-match-type', btn);
         matchType = val;
-        document.getElementById('match-target-label').innerText = val === 'sets' ? 'Sets zum Sieg (Best of)' : 'Legs zum Sieg (Best of)';
+        
+        const legsWrapper = document.getElementById('wrapper-legs-slider');
+        const setsWrapper = document.getElementById('wrapper-sets-slider');
+        const legsLabel = document.getElementById('legs-slider-label');
+        
+        if (val === 'sets') {
+            legsWrapper.classList.remove('hidden');
+            setsWrapper.classList.remove('hidden');
+            let valLegs = parseInt(document.getElementById('input-legs-slider').value);
+            legsLabel.innerText = `Legs pro Set: Best of ${valLegs} (First to ${Math.ceil(valLegs / 2)})`;
+        } else {
+            legsWrapper.classList.remove('hidden');
+            setsWrapper.classList.add('hidden');
+            let valLegs = parseInt(document.getElementById('input-legs-slider').value);
+            legsLabel.innerText = `Legs zum Matchsieg: Best of ${valLegs} (First to ${Math.ceil(valLegs / 2)})`;
+        }
     });
 
-    setupGroupListeners('group-match-target', (val, btn) => selectOption('group-match-target', btn));
+    // Slider oninput Handler
+    const legsSlider = document.getElementById('input-legs-slider');
+    if (legsSlider) {
+        legsSlider.oninput = function() {
+            let val = parseInt(this.value);
+            let firstTo = Math.ceil(val / 2);
+            if (matchType === 'sets') {
+                document.getElementById('legs-slider-label').innerText = `Legs pro Set: Best of ${val} (First to ${firstTo})`;
+            } else {
+                document.getElementById('legs-slider-label').innerText = `Legs zum Matchsieg: Best of ${val} (First to ${firstTo})`;
+            }
+        };
+    }
+
+    const setsSlider = document.getElementById('input-sets-slider');
+    if (setsSlider) {
+        setsSlider.oninput = function() {
+            let val = parseInt(this.value);
+            let firstTo = Math.ceil(val / 2);
+            document.getElementById('sets-slider-label').innerText = `Sets zum Matchgewinn: Best of ${val} (First to ${firstTo})`;
+        };
+    }
+
     setupGroupListeners('group-bot-level', (val, btn) => selectOption('group-bot-level', btn));
     setupGroupListeners('group-input-mode', (val, btn) => selectOption('group-input-mode', btn));
     setupGroupListeners('group-points', (val, btn) => selectOption('group-points', btn));
@@ -262,9 +298,7 @@ function setupGroupListeners(groupId, callback) {
 function changeFinishingType(val, btn) {
     selectOption('group-fin-type', btn);
     const wrapper = document.getElementById('wrapper-fin-range');
-    if (wrapper) {
-        wrapper.style.display = (val === 'strict') ? 'none' : 'block';
-    }
+    if (wrapper) wrapper.style.display = (val === 'strict') ? 'none' : 'block';
 }
 
 function selectOption(groupId, element) {
@@ -335,7 +369,6 @@ function inputVirtualDart(field) {
     };
 
     updateDartPreviewDOM();
-    
     let wasBust = checkLiveBustSegment(currentActiveDartSlot);
 
     if (!wasBust && currentActiveDartSlot < 3) {
@@ -362,9 +395,7 @@ function appendVirtualSum(digit) {
     if (currentStr === "0") currentStr = "";
     currentStr += digit;
     let newSum = parseInt(currentStr) || 0;
-    if (newSum <= 180) {
-        setVirtualSum(newSum);
-    }
+    if (newSum <= 180) setVirtualSum(newSum);
 }
 
 function setVirtualSum(value) {
@@ -400,7 +431,6 @@ function speakTurnResult(score, rest) {
     window.speechSynthesis.speak(scoreUtterance);
 }
 
-// Trigger des Checkout Sprach-Helpers
 function triggerCheckoutHelperVoice(score) {
     if(!isSpeechOutputActive || !isCheckoutHelperActive || score > 170 || invalidFinishes.includes(score)) return;
     let route = null;
@@ -444,7 +474,6 @@ function startGame() {
     botLevel = getSelectedValue('group-bot-level');
     inputMode = (activeGlobalMode === 'x01') ? getSelectedValue('group-input-mode') : 'segment';
     matchType = getSelectedValue('group-match-type');
-    matchTarget = parseInt(getSelectedValue('group-match-target'));
 
     document.getElementById('set-input-container').classList.add('hidden');
     document.getElementById('segment-input-container').classList.add('hidden');
@@ -455,7 +484,6 @@ function startGame() {
     document.getElementById('h2-header').innerText = isBotMatch ? "Verlauf Bot" : "Verlauf S2";
     document.getElementById('submit-btn').classList.remove('hidden');
 
-    // Stats resetten
     matchStats = {
         1: { totalPoints: 0, totalDarts: 0, first9Points: 0, first9Darts: 0, turns: 0, c100: 0, c140: 0, c180: 0, highestTurn: 0, highestFinish: 0, shortestLeg: 999 },
         2: { totalPoints: 0, totalDarts: 0, first9Points: 0, first9Darts: 0, turns: 0, c100: 0, c140: 0, c180: 0, highestTurn: 0, highestFinish: 0, shortestLeg: 999 }
@@ -466,7 +494,21 @@ function startGame() {
     if (activeGlobalMode === 'x01') {
         initialPoints = parseInt(getSelectedValue('group-points'));
         scores[1] = initialPoints; scores[2] = initialPoints;
-        document.getElementById('game-title').innerText = `${initialPoints}er X01 Match (Best of ${matchTarget} ${matchType})`;
+
+        // Slider-Distanz-Parsing ausführen
+        let legsValue = parseInt(document.getElementById('input-legs-slider').value);
+        window.legsRequiredForSet = Math.ceil(legsValue / 2);
+
+        if (matchType === 'legs') {
+            matchTarget = legsValue;
+            document.getElementById('game-title').innerText = `${initialPoints}er Match (Best of ${matchTarget} Legs)`;
+        } else {
+            let setsValue = parseInt(document.getElementById('input-sets-slider').value);
+            matchTarget = setsValue;
+            window.setsRequiredForMatch = Math.ceil(setsValue / 2);
+            document.getElementById('game-title').innerText = `${initialPoints}er Match (Best of ${setsValue} Sets, Legs pro Set: Best of ${legsValue})`;
+        }
+
         if (inputMode === 'set') {
             document.getElementById('set-input-container').classList.remove('hidden');
             document.getElementById('submit-btn').classList.add('hidden');
@@ -578,14 +620,11 @@ function handleBustProcess(currentScore, scoredPoints, originalDetails) {
     document.getElementById('error-message').innerText = text;
     speak(text);
     
-    // Tracke Darts auch bei Überwerfen
     if (activeGlobalMode === 'x01') {
         matchStats[activePlayer].totalDarts += 3;
         legDartsCount[activePlayer] += 3;
         matchStats[activePlayer].turns += 1;
-        if (legDartsCount[activePlayer] <= 9) {
-            matchStats[activePlayer].first9Darts += 3;
-        }
+        if (legDartsCount[activePlayer] <= 9) matchStats[activePlayer].first9Darts += 3;
     }
 
     if (activeGlobalMode === 'fin') {
@@ -617,26 +656,18 @@ function checkLiveBustSegment(currentDartIndex) {
     let runningSum = d1 + d2 + d3;
     let currentScore = (activeGlobalMode === 'fin') ? finTargetScore : scores[activePlayer];
     let remaining = currentScore - runningSum;
-    
     let modeOut = (activeGlobalMode === 'fin') ? 'double' : outMode;
 
-    if (remaining < 0) {
+    if (remaining < 0 || (remaining === 1 && modeOut === 'double')) {
         handleBustProcess(currentScore, runningSum, `${virtualDartData[1].label}/${virtualDartData[2].label}/${virtualDartData[3].label}`);
         return true;
     }
 
-    if (remaining === 1 && modeOut === 'double') {
-        handleBustProcess(currentScore, runningSum, `${virtualDartData[1].label}/${virtualDartData[2].label}/${virtualDartData[3].label}`);
-        return true;
-    }
-
-    if (remaining === 0) {
-        if (modeOut === 'double') {
-            let activeData = virtualDartData[currentDartIndex];
-            if (!activeData.key || (!activeData.key.startsWith('D') && activeData.key !== 'd-bull')) {
-                handleBustProcess(currentScore, runningSum, `${virtualDartData[1].label}/${virtualDartData[2].label}/${virtualDartData[3].label}`);
-                return true;
-            }
+    if (remaining === 0 && modeOut === 'double') {
+        let activeData = virtualDartData[currentDartIndex];
+        if (!activeData.key || (!activeData.key.startsWith('D') && activeData.key !== 'd-bull')) {
+            handleBustProcess(currentScore, runningSum, `${virtualDartData[1].label}/${virtualDartData[2].label}/${virtualDartData[3].label}`);
+            return true;
         }
     }
     return false;
@@ -685,16 +716,13 @@ function executeX01Turn() {
         if (remaining === 0 && outMode === 'double') {
             let last = (virtualDartData[3].label !== "-") ? virtualDartData[3] : 
                        ((virtualDartData[2].label !== "-") ? virtualDartData[2] : virtualDartData[1]);
-            if (!last.key || (!last.key.startsWith('D') && last.key !== 'd-bull')) {
-                isBust = true;
-            }
+            if (!last.key || (!last.key.startsWith('D') && last.key !== 'd-bull')) isBust = true;
         }
         
         if (isBust) { handleBustProcess(currentScore, totalScore, scoreDetails); return; }
         scores[activePlayer] = remaining;
     }
 
-    // Akkumuliere Metriken für die Statistik
     matchStats[activePlayer].totalPoints += totalScore;
     matchStats[activePlayer].totalDarts += dartsCountThisTurn;
     legDartsCount[activePlayer] += dartsCountThisTurn;
@@ -728,34 +756,38 @@ function handleLegOrSetWin() {
     
     if (matchType === 'legs') {
         legs[winner]++;
-        if (legs[winner] >= Math.ceil(matchTarget / 2) && matchTarget > 1) {
-            showVictory(winner); return;
-        } else if (matchTarget === 1) {
+        let requiredLegsToWinMatch = Math.ceil(matchTarget / 2);
+        if (legs[winner] >= requiredLegsToWinMatch) {
             showVictory(winner); return;
         }
     } else {
         legs[winner]++;
-        if (legs[winner] >= 3) { // 3 Legs für ein Set
-            legs[1] = 0; legs[2] = 0;
+        let requiredLegsToWinSet = window.legsRequiredForSet || 3;
+        
+        if (legs[winner] >= requiredLegsToWinSet) {
+            legs[1] = 0; legs[2] = 0; 
             sets[winner]++;
-            speak(isEn ? "Set won!" : "Set gewonnen!");
-            if (sets[winner] >= Math.ceil(matchTarget / 2)) {
+            
+            let requiredSetsToWinMatch = window.setsRequiredForMatch || 2;
+            if (sets[winner] >= requiredSetsToWinMatch) {
                 showVictory(winner); return;
+            } else {
+                speak(isEn ? "Set won!" : "Set gewonnen!");
+                alert(isEn ? `Player ${winner} won the set!` : `Spieler ${winner} gewinnt den Satz!`);
             }
         }
     }
 
     speak(isEn ? "Leg finished!" : "Leg beendet!");
-    alert(isEn ? `Player ${winner} won the leg!` : `Spieler ${winner} gewinnt das Leg!`);
     
-    // Reset Scores & Leg-Darts für neues Leg
     scores[1] = initialPoints; scores[2] = initialPoints;
     legDartsCount[1] = 0; legDartsCount[2] = 0;
     histories[1] = []; histories[2] = [];
     document.getElementById('p1-history-list').innerHTML = "";
     document.getElementById('p2-history-list').innerHTML = "";
     updateScoreboardDisplays();
-    activePlayer = (winner === 1) ? 2 : 1; // Verlierer fängt nächstes Leg an
+    
+    activePlayer = (winner === 1) ? 2 : 1; 
     resetVirtualState();
     triggerCheckoutHelperVoice(scores[activePlayer]);
 
@@ -764,14 +796,10 @@ function handleLegOrSetWin() {
     }
 }
 
-// BOT LOGIK IMPLEMENTIERUNG
 function executeBotTurn() {
     if(!isBotMatch || activePlayer !== 2 || isLockingInput) return;
     
-    // Ermittle Bot Skill-Parameter
-    let targetAvg = 35;
-    let tripleChance = 0.02;
-    let doubleChance = 0.05;
+    let targetAvg = 35; let tripleChance = 0.02; let doubleChance = 0.05;
     if (botLevel === 'medium') { targetAvg = 52; tripleChance = 0.08; doubleChance = 0.12; }
     else if (botLevel === 'strong') { targetAvg = 78; tripleChance = 0.22; doubleChance = 0.30; }
     else if (botLevel === 'insane') { targetAvg = 102; tripleChance = 0.45; doubleChance = 0.60; }
@@ -780,55 +808,43 @@ function executeBotTurn() {
     let darts = [];
     let currentDartScore = 0;
 
-    // Einfacher Checkout/Anwurf Simulator
     for (let slot = 1; slot <= 3; slot++) {
         let remainingNow = botRest - currentDartScore;
-        if (remainingNow <= 1) break; // Kann nicht mehr regulär werfen oder überworfen
+        if (remainingNow <= 1) break; 
         
         let dartVal = 0; let label = "0"; let key = "0"; let m = 1;
 
-        // Finish-Logik des Bots
         if (remainingNow <= 40 && remainingNow % 2 === 0 && outMode === 'double') {
             let targetDouble = remainingNow / 2;
             if (Math.random() < doubleChance) {
                 dartVal = remainingNow; m = 2; label = `D${targetDouble}`; key = `D${targetDouble}`;
             } else if (Math.random() < 0.4) {
                 dartVal = targetDouble; m = 1; label = `S${targetDouble}`; key = `S${targetDouble}`;
-            } else {
-                dartVal = 0; label = "Miss";
-            }
+            } else { dartVal = 0; label = "Miss"; }
         } else if (remainingNow === 50 && outMode === 'double') {
             if (Math.random() < doubleChance) {
                 dartVal = 50; m = 2; label = "D-Bull"; key = "d-bull";
             } else { dartVal = 25; label = "Bull"; }
         } else {
-            // Scoring-Wurf
             let rand = Math.random();
             if (rand < tripleChance) {
                 dartVal = 60; m = 3; label = "T20"; key = "T20";
             } else if (rand < tripleChance + 0.15) {
                 dartVal = 20; m = 1; label = "S20"; key = "S20";
             } else if (rand < 0.75) {
-                // Getroffen, aber gestreut in Nachbarfelder
                 let options = [1, 5, 20, 9, 11, 19];
                 let chosen = options[Math.floor(Math.random() * options.length)];
                 dartVal = chosen; m = 1; label = `S${chosen}`; key = `S${chosen}`;
-            } else {
-                dartVal = 0; label = "0";
-            }
+            } else { dartVal = 0; label = "0"; }
         }
 
         currentDartScore += dartVal;
         darts.push({val: dartVal, label: label, key: key, m: m});
-        if (botRest - currentDartScore === 0 && (outMode === 'single' || (outMode === 'double' && m === 2))) {
-            break; // Check!
-        }
+        if (botRest - currentDartScore === 0 && (outMode === 'single' || (outMode === 'double' && m === 2))) break;
     }
 
-    // Fülle ungenutzte Slots für Display-String auf
     while(darts.length < 3) darts.push({val: 0, label: "-", key: "", m: 1});
 
-    // Übersetze Bot-Ergebnis in reguläre Match-Variablen
     virtualDartData[1] = darts[0]; virtualDartData[2] = darts[1]; virtualDartData[3] = darts[2];
     executeX01Turn();
 }
@@ -839,9 +855,7 @@ function nextPlayer() {
     activePlayer = activePlayer === 1 ? 2 : 1;
     document.getElementById(`p${activePlayer}-card`).classList.add('active');
 
-    if (activeGlobalMode === 'x01') {
-        triggerCheckoutHelperVoice(scores[activePlayer]);
-    }
+    if (activeGlobalMode === 'x01') triggerCheckoutHelperVoice(scores[activePlayer]);
 
     if (isBotMatch && activePlayer === 2) {
         isLockingInput = true;
@@ -1010,7 +1024,6 @@ function addHistoryEntry(player, score, rest, details, isBust) {
     });
 }
 
-// SPIELZUSAMMENFASSUNG & LOCALSTORAGE METRIKEN LOGIK
 function showVictory(winnerId) {
     document.getElementById('spielseite').classList.add('hidden');
     document.getElementById('abschlussseite').classList.remove('hidden');
@@ -1022,7 +1035,6 @@ function showVictory(winnerId) {
     document.getElementById('th-p1-name').innerText = p1Name;
     document.getElementById('th-p2-name').innerText = p2Name;
 
-    // Berechne aggregierte Match-Metriken
     let p1Avg = matchStats[1].totalDarts > 0 ? ((matchStats[1].totalPoints / matchStats[1].totalDarts) * 3).toFixed(1) : "0.0";
     let p2Avg = matchStats[2].totalDarts > 0 ? ((matchStats[2].totalPoints / matchStats[2].totalDarts) * 3).toFixed(1) : "0.0";
     
@@ -1042,7 +1054,6 @@ function showVictory(winnerId) {
         <tr><td>100+ / 140+ / 180er</td><td>${matchStats[1].c100} / ${matchStats[1].c140} / ${matchStats[1].c180}</td><td>${matchStats[2].c100} / ${matchStats[2].c140} / ${matchStats[2].c180}</td></tr>
     `;
 
-    // Speicher Daten für Alltime Stats im LocalStorage (Nur Spieler 1 tracken)
     if (activeGlobalMode === 'x01') {
         saveMatchToLocalStorage(parseFloat(p1Avg), matchStats[1].highestTurn, matchStats[1].highestFinish, matchStats[1].c180);
     }

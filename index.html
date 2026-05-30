@@ -92,7 +92,6 @@
         .stats-table th { background: var(--input-bg); color: var(--gold-text); }
         .stats-table td:nth-child(2), .stats-table td:nth-child(3) { text-align: center; }
 
-        /* NEU: Debug-Fehleranzeige Styles */
         #debug-error-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); display: flex; justify-content: center; align-items: center; z-index: 9999; padding: 20px; box-sizing: border-box; }
         .debug-error-content { background: #2a1616; border: 3px solid #e50914; color: #ffffff; padding: 20px; border-radius: 8px; max-width: 500px; width: 100%; box-shadow: 0 0 20px rgba(229, 9, 20, 0.5); font-family: monospace; }
         .debug-error-title { color: #e50914; font-size: 18px; margin-top: 0; font-weight: bold; border-bottom: 1px solid #e50914; padding-bottom: 8px; }
@@ -170,9 +169,193 @@
                 </div>
             </div>
         </div>
-        
+
+        <div id="options-finishing" class="hidden">
+            <div class="form-group">
+                <label>Finishing Typ</label>
+                <div class="btn-group" id="group-fin-type">
+                    <div class="btn-option active" data-value="realistic">Realistische Finishes (61-170)</div>
+                    <div class="btn-option" data-value="random">Zufall (2-170)</div>
+                </div>
+            </div>
+        </div>
+
+        <div id="options-atc" class="hidden">
+            <div class="form-group">
+                <label>ATC Modus</label>
+                <div class="btn-group" id="group-atc-mode">
+                    <div class="btn-option active" data-value="singles">Nur Singles (1-20 -> Bull)</div>
+                    <div class="btn-option" data-value="all">Alles erlaubt</div>
+                </div>
+            </div>
+        </div>
+
         <button id="btn-start-game" class="btn-main">Spiel starten</button>
         <button id="btn-open-stats" class="btn-main" style="background:#222; border-color:#333; margin-top:8px; font-size:14px; padding:10px;">📊 Statistiken</button>
+    </div>
+
+    <div id="spielfeld" class="card hidden">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+            <div id="checkout-helper-text" style="font-size: 15px; font-weight: bold; color: var(--gold-text);"></div>
+            <button class="settings-trigger btn-settings-open" style="position: static; font-size: 20px; padding: 0;">⚙️</button>
+        </div>
+
+        <div class="game-layout">
+            <div id="card-p1" class="player-card active">
+                <div id="name-p1" style="font-weight: bold; font-size: 15px;">Spieler 1</div>
+                <div id="score-p1" class="score-display">501</div>
+                <div id="legs-sets-p1" class="legs-sets-display">L: 0 | S: 0</div>
+                <div id="avg-p1" class="live-avg-display">Ø: 0.0</div>
+            </div>
+            <div id="card-p2" class="player-card hidden">
+                <div id="name-p2" style="font-weight: bold; font-size: 15px;">Spieler 2</div>
+                <div id="score-p2" class="score-display">501</div>
+                <div id="legs-sets-p2" class="legs-sets-display">L: 0 | S: 0</div>
+                <div id="avg-p2" class="live-avg-display">Ø: 0.0</div>
+            </div>
+        </div>
+
+        <div id="error-field" class="error-msg"></div>
+
+        <div id="keyboard-segment-wrapper">
+            <div class="dart-live-preview">
+                <div id="dart-preview-1" class="preview-box active-slot" data-slot="1">-</div>
+                <div id="dart-preview-2" class="preview-box" data-slot="2">-</div>
+                <div id="dart-preview-3" class="preview-box" data-slot="3">-</div>
+            </div>
+            <div class="keyboard-grid-shortcuts">
+                <button class="btn-key shortcut" data-val="0">0</button>
+                <button class="btn-key shortcut" data-val="26">Single Out</button>
+                <button class="btn-key shortcut" data-val="41">Low</button>
+                <button class="btn-key shortcut" data-val="60">Ton</button>
+                <button class="btn-key shortcut" data-val="100">Ton+</button>
+            </div>
+            <div class="keyboard-grid">
+                <button class="btn-key num-key" data-val="20">20</button>
+                <button class="btn-key num-key" data-val="19">19</button>
+                <button class="btn-key num-key" data-val="18">18</button>
+                <button class="btn-key num-key" data-val="17">17</button>
+                <button class="btn-key num-key" data-val="16">16</button>
+                <button class="btn-key num-key" data-val="15">15</button>
+                <button class="btn-key num-key" data-val="14">14</button>
+                <button class="btn-key num-key" data-val="13">13</button>
+                <button class="btn-key num-key" data-val="12">12</button>
+                <button class="btn-key num-key" data-val="11">11</button>
+                <button class="btn-key num-key" data-val="10">10</button>
+                <button class="btn-key num-key" data-val="9">9</button>
+                <button class="btn-key num-key" data-val="8">8</button>
+                <button class="btn-key num-key" data-val="7">7</button>
+                <button class="btn-key num-key" data-val="6">6</button>
+                <button class="btn-key num-key" data-val="5">5</button>
+                <button class="btn-key num-key" data-val="4">4</button>
+                <button class="btn-key num-key" data-val="3">3</button>
+                <button class="btn-key num-key" data-val="2">2</button>
+                <button class="btn-key num-key" data-val="1">1</button>
+                <button class="btn-key num-key" data-val="25">Bull</button>
+                <button class="btn-key modifier" id="btn-mod-double">D</button>
+                <button class="btn-key modifier" id="btn-mod-triple">T</button>
+                <button class="btn-key action-clear" id="btn-clear-segment">⌫</button>
+                <button class="btn-key modifier" id="btn-submit-segment" style="background:#1b4d36;">✓</button>
+            </div>
+        </div>
+
+        <div id="keyboard-sum-wrapper" class="hidden">
+            <div id="sum-display" class="sum-display-box">0</div>
+            <div class="keyboard-grid-sum">
+                <button class="btn-key sum-num" data-val="1">1</button>
+                <button class="btn-key sum-num" data-val="2">2</button>
+                <button class="btn-key sum-num" data-val="3">3</button>
+                <button class="btn-key sum-num" data-val="4">4</button>
+                <button class="btn-key sum-num" data-val="5">5</button>
+                <button class="btn-key sum-num" data-val="6">6</button>
+                <button class="btn-key sum-num" data-val="7">7</button>
+                <button class="btn-key sum-num" data-val="8">8</button>
+                <button class="btn-key sum-num" data-val="9">9</button>
+                <button class="btn-key action-clear" id="btn-clear-sum">⌫</button>
+                <button class="btn-key sum-num" data-val="0">0</button>
+                <button class="btn-key modifier" id="btn-submit-sum" style="background:#1b4d36;">✓</button>
+            </div>
+        </div>
+
+        <div style="margin-top: 15px;">
+            <div style="font-size: 12px; font-weight: bold; opacity: 0.5; margin-bottom: 4px;">Letzte Aufnahmen</div>
+            <table class="history-table">
+                <thead>
+                    <tr>
+                        <th style="width: 50%;" id="hist-header-p1">Spieler 1</th>
+                        <th style="width: 50%;" id="hist-header-p2">Spieler 2</th>
+                    </tr>
+                </thead>
+                <tbody id="history-tbody"></tbody>
+            </table>
+        </div>
+
+        <button id="btn-abort-game" class="btn-main btn-abort">Spiel abbrechen</button>
+    </div>
+
+</div>
+
+<div id="settings-modal" class="modal-overlay hidden">
+    <div class="modal-content">
+        <button class="modal-close" id="btn-settings-close">✖</button>
+        <h3 style="margin-top:0; border-bottom: 1px solid var(--border-color); padding-bottom: 10px; color: var(--gold-text);">⚙️ Einstellungen</h3>
+        
+        <div class="form-group">
+            <label>Design-Farbschema</label>
+            <div class="btn-group" id="group-theme">
+                <div class="btn-option active" data-value="dark">Dark</div>
+                <div class="btn-option" data-value="light">Light</div>
+            </div>
+        </div>
+        
+        <div class="form-group">
+            <label>Sprachausgabe (Caller)</label>
+            <div class="btn-group" id="group-speech">
+                <div class="btn-option active" data-value="on">An</div>
+                <div class="btn-option" data-value="off">Aus</div>
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label>Checkout-Anzeige</label>
+            <div class="btn-group" id="group-checkout-helper">
+                <div class="btn-option active" data-value="on">An</div>
+                <div class="btn-option" data-value="off">Aus</div>
+            </div>
+        </div>
+
+        <div id="wrapper-voice-settings">
+            <div class="form-group">
+                <label for="lang-select">Sprache:</label>
+                <select id="lang-select">
+                    <option value="de-DE">Deutsch</option>
+                    <option value="en-US">English</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="voice-select">Stimme:</label>
+                <select id="voice-select"><option value="">Wird geladen...</option></select>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="stats-modal" class="modal-overlay hidden">
+    <div class="modal-content" style="max-width: 500px;">
+        <button class="modal-close" id="btn-stats-close">✖</button>
+        <h3 style="margin-top:0; border-bottom: 1px solid var(--border-color); padding-bottom: 10px; color: var(--gold-text);">📊 Allzeit Statistiken</h3>
+        
+        <table class="stats-table">
+            <tbody>
+                <tr><td>Spiele absolviert</td><td id=\"stat-total-games\">0</td></tr>
+                <tr><td>Gesamt Einzeldart-Ø</td><td id="stat-alltime-avg">0.0</td></tr>
+                <tr><td>Höchste Aufnahme</td><td id="stat-highest-turn">0</td></tr>
+                <tr><td>Höchstes Checkout</td><td id="stat-highest-co">0</td></tr>
+                <tr><td>Gesamte 180er</td><td id="stat-total-180s">0</td></tr>
+            </tbody>
+        </table>
+        
+        <button class="btn-main" id="btn-clear-stats" style="background:#555; border-color:#666; font-size:12px; padding:8px;">Statistiken zurücksetzen</button>
     </div>
 </div>
 

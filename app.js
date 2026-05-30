@@ -204,7 +204,6 @@ function initEventListeners() {
         else document.getElementById('options-bot').classList.add('hidden');
     });
 
-    // Slider Live-Updates
     const legsSlider = document.getElementById('input-legs-slider');
     if (legsSlider) {
         legsSlider.oninput = function() {
@@ -287,6 +286,7 @@ function changeFinishingType(val, btn) {
     if (wrapper) wrapper.style.display = (val === 'strict') ? 'none' : 'block';
 }
 
+// Optionen aktivieren
 function selectOption(groupId, element) {
     document.querySelectorAll(`#${groupId} .btn-option`).forEach(btn => btn.classList.remove('active'));
     element.classList.add('active');
@@ -307,7 +307,6 @@ function changeGameMode(mode, element) {
     document.getElementById('wrapper-players').classList.remove('hidden');
     document.getElementById('options-bot').classList.add('hidden');
 
-    // WICHTIG: Der Schieberegler-Container bleibt nun strukturell unberührt und ist fest definiert!
     if (mode === 'x01') {
         document.getElementById('options-x01').classList.remove('hidden');
         if(getSelectedValue('group-players') === 'bot') document.getElementById('options-bot').classList.remove('hidden');
@@ -563,7 +562,7 @@ function updateScoreboardDisplays() {
     document.getElementById('p1-legs-sets').innerText = `Legs: ${legs[1]} | Sets: ${sets[1]}`;
     document.getElementById('p2-legs-sets').innerText = `Legs: ${legs[2]} | Sets: ${sets[2]}`;
 
-    // NEU: Live-Anzeige des echten Einzeldart-Averages und der absoluten Dart-Anzahl auf den Cards
+    // BEHOBEN: Zeigt bei 0 Darts nun sauber 0.0 statt NaN an
     let p1SingleAvg = matchStats[1].totalDarts > 0 ? (matchStats[1].totalPoints / matchStats[1].totalDarts).toFixed(1) : "0.0";
     let p2SingleAvg = matchStats[2].totalDarts > 0 ? (matchStats[2].totalPoints / matchStats[2].totalDarts).toFixed(1) : "0.0";
     
@@ -611,7 +610,6 @@ function handleBustProcess(currentScore, scoredPoints, originalDetails) {
     document.getElementById('error-message').innerText = text;
     speak(text);
     
-    // Mathematisch korrekt: Im Falle eines Busts zählen 3 Darts mehr, aber 0 Punkte für den Average
     if (activeGlobalMode === 'x01') {
         matchStats[activePlayer].totalDarts += 3;
         legDartsCount[activePlayer] += 3;
@@ -974,48 +972,17 @@ function executeSODTurn() {
     resetVirtualState();
 }
 
+// BEREINIGT: Die Spalte für den alten Average wurde restlos entfernt
 function addHistoryEntry(player, score, rest, details, isBust) {
     histories[player].unshift({ score, rest, details, isBust });
     const tbody = document.getElementById(`p${player}-history-list`);
     if(!tbody) return;
     tbody.innerHTML = "";
-    
-    let runningPointsSum = 0;
-    let runningDartsSum = 0;
 
-    // Wir laufen rückwärts durch die Historie, um die kumulierten Werte korrekt zu errechnen
-    for (let i = histories[player].length - 1; i >= 0; i--) {
-        let item = histories[player][i];
-        
-        // Jeder Tabelleneintrag (jede Aufnahme) entspricht standardmäßig 3 geworfenen Darts
-        runningDartsSum += 3;
-        
-        // Nur wenn es kein Überwerfen war, zählen die erzielten Punkte auf das Konto ein
-        if (!item.isBust && typeof item.score === 'number') {
-            runningPointsSum += item.score;
-        }
-        
-        // ANPASSUNG: Hier wird der exakte Einzeldart-Average (Ø1) berechnet (Punkte geteilt durch Darts)
-        let currentSingleAvg = "-";
-        if (runningDartsSum > 0 && (activeGlobalMode === 'x01' || activeGlobalMode === 'fin')) {
-            currentSingleAvg = (runningPointsSum / runningDartsSum).toFixed(1);
-        } else if (activeGlobalMode === 'sod' || activeGlobalMode === 'atc') {
-            let cumulatedHits = 0;
-            for(let j = histories[player].length - 1; j >= i; j--) {
-                let parsedHit = parseInt(histories[player][j].score);
-                if (!isNaN(parsedHit)) cumulatedHits += parsedHit;
-            }
-            currentSingleAvg = cumulatedHits.toString();
-        }
-
-        item.calculatedSingleAvg = currentSingleAvg;
-    }
-
-    // Rendern der Tabelle (Neueste Aufnahmen oben)
     histories[player].forEach((item, index) => {
         let dartsThrown = (histories[player].length - index) * 3;
         let displayScore = item.isBust ? `Bust` : item.score;
-        tbody.innerHTML += `<tr><td>${dartsThrown}</td><td>${displayScore}</td><td>${item.calculatedSingleAvg}</td><td>${item.rest}</td><td>${item.details}</td></tr>`;
+        tbody.innerHTML += `<tr><td>${dartsThrown}</td><td>${displayScore}</td><td>${item.rest}</td><td>${item.details}</td></tr>`;
     });
 }
 
@@ -1030,7 +997,6 @@ function showVictory(winnerId) {
     document.getElementById('th-p1-name').innerText = p1Name;
     document.getElementById('th-p2-name').innerText = p2Name;
 
-    // Errechnung des finalen Einzeldart-Averages für die Endabrechnung
     let p1Avg = matchStats[1].totalDarts > 0 ? (matchStats[1].totalPoints / matchStats[1].totalDarts).toFixed(1) : "0.0";
     let p2Avg = matchStats[2].totalDarts > 0 ? (matchStats[2].totalPoints / matchStats[2].totalDarts).toFixed(1) : "0.0";
     

@@ -49,22 +49,21 @@
         .btn-group { display: flex; gap: 8px; margin-bottom: 10px; flex-wrap: wrap; }
         .btn-option { flex: 1; padding: 10px; background: var(--btn-opt-bg); border: 1px solid var(--border-color); color: var(--text-color); cursor: pointer; border-radius: 4px; text-align: center; min-width: 70px; user-select: none; font-size: 14px; }
         .btn-option.active { background: var(--accent-color); border-color: #ff1e27; font-weight: bold; color: #fff; }
-        .btn-main { width: 100%; padding: 14px; background: #0d2b1d; border: 1px solid #1b4d36; color: #fff; font-size: 16px; cursor: pointer; border-radius: 4px; font-weight: bold; }
+        .btn-main { width: 100%; padding: 14px; background: #0d2b1d; border: 1px solid #1b4d36; color: #fff; font-size: 16px; cursor: pointer; border-radius: 4px; font-weight: bold; text-align: center; }
         .btn-main:hover { background: var(--accent-hover); }
         .btn-abort { background: #444; border: 1px solid #555; margin-top: 10px; padding: 8px; font-size: 12px; }
         
         .settings-trigger { position: absolute; top: 15px; right: 15px; font-size: 24px; cursor: pointer; background: transparent; border: none; color: var(--text-color); opacity: 0.7; z-index: 10; }
         
-        .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); display: flex; justify-content: center; align-items: center; z-index: 100; }
-        .modal-content { background: var(--card-bg); border: 1px solid var(--border-color); padding: 25px; border-radius: 8px; width: 90%; max-width: 450px; box-shadow: 0 4px 15px rgba(0,0,0,0.5); position: relative; }
+        .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); display: flex; justify-content: center; align-items: center; z-index: 100; padding: 10px; box-sizing: border-box; }
+        .modal-content { background: var(--card-bg); border: 1px solid var(--border-color); padding: 25px; border-radius: 8px; width: 90%; max-width: 450px; box-shadow: 0 4px 15px rgba(0,0,0,0.5); position: relative; max-height: 90vh; overflow-y: auto; }
         .modal-close { position: absolute; top: 15px; right: 15px; font-size: 20px; cursor: pointer; background: transparent; border: none; color: var(--text-color); opacity: 0.7; }
 
-        .listening { animation: pulse 1.5s infinite; color: var(--accent-color); }
-        @keyframes pulse { 0% { opacity: 0.5; } 50% { opacity: 1; } 100% { opacity: 0.5; } }
         .game-layout { display: flex; gap: 10px; }
         .player-card { flex: 1; background: var(--input-bg); padding: 10px; border-radius: 6px; text-align: center; border: 2px solid transparent; }
         .player-card.active { border-color: var(--accent-color); background: var(--player-active-bg); }
         .score-display { font-size: 42px; font-weight: bold; margin: 5px 0; color: var(--gold-text); }
+        .legs-sets-display { font-size: 13px; opacity: 0.8; margin-top: 4px; font-weight: bold; }
         .history-table { width: 100%; border-collapse: collapse; margin-top: 5px; font-size: 12px; }
         .history-table th, .history-table td { border-bottom: 1px solid var(--border-color); padding: 4px; text-align: center; }
         .history-table th { color: var(--text-color); opacity: 0.5; }
@@ -86,6 +85,12 @@
         .btn-key.shortcut { background: var(--shortcut-bg); color: var(--shortcut-text); border-color: var(--border-color); font-size: 13px; padding: 8px 2px; }
 
         .sum-display-box { background: var(--input-bg); border: 1px solid var(--border-color); border-radius: 6px; padding: 12px; text-align: center; font-size: 28px; font-weight: bold; color: var(--gold-text); margin-bottom: 10px; min-height: 34px; }
+        
+        /* Statistik Tabellen-Styling */
+        .stats-table { width: 100%; border-collapse: collapse; margin: 15px 0; font-size: 14px; }
+        .stats-table td, .stats-table th { padding: 8px; border: 1px solid var(--border-color); text-align: left; }
+        .stats-table th { background: var(--input-bg); color: var(--gold-text); }
+        .stats-table td:nth-child(2), .stats-table td:nth-child(3) { text-align: center; }
     </style>
 </head>
 <body>
@@ -107,10 +112,23 @@
         </div>
 
         <div class="form-group" id="wrapper-players">
-            <label>Spieleranzahl</label>
+            <label>Gegner-Auswahl</label>
             <div class="btn-group" id="group-players">
-                <div class="btn-option active" data-value="1">1 Spieler</div>
-                <div class="btn-option" data-value="2">2 Spieler</div>
+                <div class="btn-option active" data-value="1">Solo</div>
+                <div class="btn-option" data-value="bot">vs. Computer</div>
+                <div class="btn-option" data-value="2">vs. Spieler 2</div>
+            </div>
+        </div>
+
+        <div id="options-bot" class="hidden">
+            <div class="form-group">
+                <label>Computer Schwierigkeitsgrad</label>
+                <div class="btn-group" id="group-bot-level">
+                    <div class="btn-option active" data-value="easy">Anfänger</div>
+                    <div class="btn-option" data-value="medium">Medium</div>
+                    <div class="btn-option" data-value="strong">Strong</div>
+                    <div class="btn-option" data-value="insane">Insane</div>
+                </div>
             </div>
         </div>
 
@@ -121,6 +139,22 @@
                     <div class="btn-option active" data-value="501">501</div>
                     <div class="btn-option" data-value="301">301</div>
                     <div class="btn-option" data-value="701">701</div>
+                </div>
+            </div>
+            <div class="form-group">
+                <label>Match-Modus</label>
+                <div class="btn-group" id="group-match-type">
+                    <div class="btn-option active" data-value="legs">Legs</div>
+                    <div class="btn-option" data-value="sets">Sets</div>
+                </div>
+            </div>
+            <div class="form-group">
+                <label id="match-target-label">Legs zum Sieg (Best of)</label>
+                <div class="btn-group" id="group-match-target">
+                    <div class="btn-option active" data-value="1">1 (Single Leg)</div>
+                    <div class="btn-option" data-value="3">3 (First to 2)</div>
+                    <div class="btn-option" data-value="5">5 (First to 3)</div>
+                    <div class="btn-option" data-value="7">7 (First to 4)</div>
                 </div>
             </div>
             <div class="form-group">
@@ -191,6 +225,7 @@
         </div>
 
         <button class="btn-main" id="btn-start-game" style="margin-top: 5px;">SPIEL STARTEN</button>
+        <button class="btn-main" id="btn-open-stats" style="margin-top: 10px; background:#222; border-color:#444;">📊 STATISTIKEN & HISTORIE</button>
     </div>
 
     <div id="spielseite" class="card hidden">
@@ -202,10 +237,12 @@
                 <h3 id="p1-title" style="margin:0; font-size: 16px;">Spieler 1</h3>
                 <div id="p1-sub" class="hidden" style="font-size:11px; opacity:0.6; margin-top: 2px;"></div>
                 <div class="score-display" id="p1-score">501</div>
+                <div class="legs-sets-display" id="p1-legs-sets">Legs: 0 | Sets: 0</div>
             </div>
             <div class="player-card hidden" id="p2-card">
-                <h3 style="margin:0; font-size: 16px;">Spieler 2</h3>
+                <h3 id="p2-title" style="margin:0; font-size: 16px;">Spieler 2</h3>
                 <div class="score-display" id="p2-score">501</div>
+                <div class="legs-sets-display" id="p2-legs-sets">Legs: 0 | Sets: 0</div>
             </div>
         </div>
 
@@ -301,7 +338,7 @@
                 </table>
             </div>
             <div style="flex:1;" id="p2-history-box" class="hidden">
-                <h4 style="margin:5px 0; opacity:0.6; font-size:13px;">Verlauf S2</h4>
+                <h4 id="h2-header" style="margin:5px 0; opacity:0.6; font-size:13px;">Verlauf S2</h4>
                 <table class="history-table">
                     <thead><tr><th>Darts</th><th>Score</th><th>𝚿 Ø3</th><th>Rest</th><th>Details</th></tr></thead>
                     <tbody id="p2-history-list"></tbody>
@@ -311,8 +348,22 @@
     </div>
 
     <div id="abschlussseite" class="card hidden" style="text-align:center;">
-        <h2 style="color: var(--gold-text); font-size: 26px;">🏆 GEWONNEN! 🏆</h2>
-        <button class="btn-main" id="btn-reset-game" style="max-width: 300px; margin: 10px auto 0 auto;">Hauptmenü</button>
+        <h2 style="color: var(--gold-text); font-size: 26px; margin-bottom:5px;">🏆 MATCH BEENDET! 🏆</h2>
+        <h3 id="winner-announcement" style="margin:0 0 15px 0; color:#fff;">Spieler 1 gewinnt!</h3>
+        
+        <table class="stats-table">
+            <thead>
+                <tr>
+                    <th>Metrik</th>
+                    <th id="th-p1-name">Spieler 1</th>
+                    <th id="th-p2-name">Spieler 2</th>
+                </tr>
+            </thead>
+            <tbody id="summary-stats-body">
+                </tbody>
+        </table>
+
+        <button class="btn-main" id="btn-reset-game" style="max-width: 300px; margin: 20px auto 0 auto;">Hauptmenü</button>
     </div>
 
     <div id="settings-modal" class="modal-overlay hidden">
@@ -337,10 +388,10 @@
             </div>
 
             <div class="form-group">
-                <label>Spracheingabe (Mikrofon)</label>
-                <div class="btn-group" id="group-toggle-stt">
-                    <div class="btn-option" data-value="true">Ja <span id="icon-listening-modal">🎤</span></div>
-                    <div class="btn-option active" data-value="false">Nein</div>
+                <label>Zuschaltbarer Checkout Helper</label>
+                <div class="btn-group" id="group-toggle-helper">
+                    <div class="btn-option active" data-value="true">Aktiviert</div>
+                    <div class="btn-option" data-value="false">Deaktiviert</div>
                 </div>
             </div>
 
@@ -357,6 +408,25 @@
                     <select id="voice-select"><option value="">Wird geladen...</option></select>
                 </div>
             </div>
+        </div>
+    </div>
+
+    <div id="stats-modal" class="modal-overlay hidden">
+        <div class="modal-content" style="max-width: 500px;">
+            <button class="modal-close" id="btn-stats-close">✖</button>
+            <h3 style="margin-top:0; border-bottom: 1px solid var(--border-color); padding-bottom: 10px; color: var(--gold-text);">📊 Allzeit Statistiken</h3>
+            
+            <table class="stats-table">
+                <tbody>
+                    <tr><td>Spiele absolviert</td><td id="stat-total-games">0</td></tr>
+                    <tr><td>Gesamt 3-Dart-Ø</td><td id="stat-alltime-avg">0.0</td></tr>
+                    <tr><td>Höchste Aufnahme</td><td id="stat-highest-turn">0</td></tr>
+                    <tr><td>Höchstes Checkout</td><td id="stat-highest-co">0</td></tr>
+                    <tr><td>Gesamte 180er</td><td id="stat-total-180s">0</td></tr>
+                </tbody>
+            </table>
+            
+            <button class="btn-main" id="btn-clear-stats" style="background:#555; border-color:#666; font-size:12px; padding:8px;">Statistiken zurücksetzen</button>
         </div>
     </div>
 

@@ -10,8 +10,8 @@ let activePlayer = 1;
 let isLockingInput = false;
 
 // Neues virtuelles Keyboard State System
-let currentVirtualSelectedMultiplier = 1; // 1 = Single, 2 = Double, 3 = Triple
-let currentActiveDartSlot = 1; // 1, 2 oder 3
+let currentVirtualSelectedMultiplier = 1; 
+let currentActiveDartSlot = 1; 
 let virtualDartData = {
     1: { val: 0, label: "-", rawField: "", m: 1, key: "" },
     2: { val: 0, label: "-", rawField: "", m: 1, key: "" },
@@ -29,12 +29,9 @@ let isSpeechOutputActive = true;
 let isSpeechInputActive = false;
 let currentTheme = 'dark';
 
-const sectors = [20, 1, 18, 4, 13, 6, 10, 15, 2, 17, 3, 19, 7, 16, 8, 11, 14, 9, 12, 5];
 const invalidFinishes = [169, 168, 166, 165, 163, 162, 159];
-// Alle mathematisch unmöglichen Scores bei 3 Darts von 0 bis 180
 const impossibleScores = [179, 178, 176, 175, 173, 172, 169, 166, 163, 162, 159];
 
-let recognition = null;
 let selectedVoice = null;
 let currentLanguageCode = 'de-DE';
 
@@ -46,7 +43,6 @@ function safeInit() {
     }
     populateSodTargets();
     initEventListeners();
-    drawLiveBoard();
     initVoices();
 }
 
@@ -137,11 +133,6 @@ function initEventListeners() {
         isSpeechOutputActive = (val === 'true');
         const subMenu = document.getElementById('sub-voice-settings');
         if (subMenu) subMenu.style.display = isSpeechOutputActive ? 'block' : 'none';
-    });
-
-    setupGroupListeners('group-toggle-stt', (val, btn) => {
-        selectOption('group-toggle-stt', btn);
-        setSpeechInputState(val === 'true');
     });
 
     setupGroupListeners('group-game-mode', (val, btn) => changeGameMode(val, btn));
@@ -260,9 +251,7 @@ function inputVirtualDart(field) {
     document.getElementById('error-message').innerText = "";
 
     let m = currentVirtualSelectedMultiplier;
-    if (field === "bull") {
-        if (m === 3) m = 2; 
-    }
+    if (field === "bull" && m === 3) m = 2; 
     if (field === "0") m = 1;
 
     let parsed = parseSegmentData(field, m);
@@ -278,7 +267,6 @@ function inputVirtualDart(field) {
 
     updateDartPreviewDOM();
     
-    // Prüfe den Live-Bust, bricht bei Fehler intern ab
     let wasBust = checkLiveBustSegment(currentActiveDartSlot);
 
     if (!wasBust && currentActiveDartSlot < 3) {
@@ -498,7 +486,6 @@ function handleBustProcess(currentScore, scoredPoints, originalDetails) {
     }, 1800);
 }
 
-// LIVE BUST CHECK (Wird nach JEDEM getippten Dart gefeuert)
 function checkLiveBustSegment(currentDartIndex) {
     if (activeGlobalMode !== 'x01' && activeGlobalMode !== 'fin') return false;
 
@@ -507,24 +494,21 @@ function checkLiveBustSegment(currentDartIndex) {
     let d3 = virtualDartData[3].val || 0;
 
     let runningSum = d1 + d2 + d3;
-    let currentScore = scores[activePlayer];
+    let currentScore = (activeGlobalMode === 'fin') ? finTargetScore : scores[activePlayer];
     let remaining = currentScore - runningSum;
     
     let modeOut = (activeGlobalMode === 'fin') ? 'double' : outMode;
 
-    // Grundsätzlicher Überwurf (unter 0 Punkte gefallen)
     if (remaining < 0) {
         handleBustProcess(currentScore, runningSum, `${virtualDartData[1].label}/${virtualDartData[2].label}/${virtualDartData[3].label}`);
         return true;
     }
 
-    // Bei Double-Out ist ein Restwert von genau 1 Punkt unmöglich
     if (remaining === 1 && modeOut === 'double') {
         handleBustProcess(currentScore, runningSum, `${virtualDartData[1].label}/${virtualDartData[2].label}/${virtualDartData[3].label}`);
         return true;
     }
 
-    // Wenn exakt 0 Rest erreicht sind, MUSS es ein valider Checkout sein, sonst Bust
     if (remaining === 0) {
         if (modeOut === 'double') {
             let activeData = virtualDartData[currentDartIndex];
@@ -533,7 +517,6 @@ function checkLiveBustSegment(currentDartIndex) {
                 return true;
             }
         }
-        // Wenn es ein korrekter Checkout war, triggern wir hier keinen Bust, sondern lassen den Spieler regulär auf "Bestätigen" drücken oder feuern es am Ende ab.
     }
     return false;
 }
@@ -555,7 +538,6 @@ function executeX01Turn() {
     if (inputMode === 'set') {
         totalScore = virtualSumValue;
         
-        // Validierung mathematisch unmöglicher Summenwerte
         if (impossibleScores.includes(totalScore)) {
             document.getElementById('error-message').innerText = "Ungültige Score-Kombination!";
             return;
@@ -578,7 +560,6 @@ function executeX01Turn() {
         let isBust = remaining < 0 || (remaining === 1 && outMode === 'double');
         
         if (remaining === 0 && outMode === 'double') {
-            // Finde den letzten tatsächlich geworfenen Dart für die Doppel-Prüfung heraus
             let last = (virtualDartData[3].label !== "-") ? virtualDartData[3] : 
                        ((virtualDartData[2].label !== "-") ? virtualDartData[2] : virtualDartData[1]);
             if (!last.key || (!last.key.startsWith('D') && last.key !== 'd-bull')) {
@@ -608,7 +589,6 @@ function executeFinishingTurn() {
 
     if (finTypeSetting === 'strict') {
         let isCheckout = false;
-        // Im Strict-Modus zählt nur das direkte Treffen des vorgegebenen Doppels
         for (let i = 0; i < darts.length; i++) {
             if (darts[i].val === originalTarget && darts[i].key && (darts[i].key.startsWith('D') || darts[i].key === 'd-bull')) {
                 isCheckout = true; break;
@@ -718,7 +698,7 @@ function executeSODTurn() {
     
     let isEn = currentLanguageCode.startsWith('en');
     let hitLabel = isEn ? `${hitCount} Hits` : `${hitCount} Treffer`;
-    addHistoryEntry(1, hitLabel, scores[1], `${virtualDartData[1].label}/${virtualDartData[2].label}/${virtualDartData[3].label}`, false);
+    addHistoryEntry(1, hitCount, scores[1], `${virtualDartData[1].label}/${virtualDartData[2].label}/${virtualDartData[3].label}`, false);
     speakTurnResult(hitLabel, isEn ? scores[1] + " darts remaining" : scores[1] + " Pfeile verbleibend");
 
     if (scores[1] <= 0) { showVictory(); return; }
@@ -730,10 +710,39 @@ function addHistoryEntry(player, score, rest, details, isBust) {
     const tbody = document.getElementById(`p${player}-history-list`);
     if(!tbody) return;
     tbody.innerHTML = "";
+    
+    // Berechne laufenden 3-Dart-Average
+    let totalValidPoints = 0;
+    let validLegsCount = 0;
+
     histories[player].forEach((item, index) => {
         let dartsThrown = (histories[player].length - index) * 3;
+        
+        let numericalScore = 0;
+        if (!item.isBust && typeof item.score === 'number') {
+            numericalScore = item.score;
+        }
+        
+        if (activeGlobalMode === 'x01' || activeGlobalMode === 'fin') {
+            totalValidPoints += numericalScore;
+            validLegsCount++;
+        }
+
+        let currentAvg = "-";
+        if (validLegsCount > 0 && (activeGlobalMode === 'x01' || activeGlobalMode === 'fin')) {
+            currentAvg = (totalValidPoints / validLegsCount).toFixed(1);
+        } else if (activeGlobalMode === 'sod' || activeGlobalMode === 'atc') {
+            // Zeige kumulierte Treffer-Quote für Trainingsspiele
+            let cumulatedHits = 0;
+            for(let j = histories[player].length - 1; j >= index; j--) {
+                let parsedHit = parseInt(histories[player][j].score);
+                if (!isNaN(parsedHit)) cumulatedHits += parsedHit;
+            }
+            currentAvg = cumulatedHits.toString();
+        }
+
         let displayScore = item.isBust ? `Bust` : item.score;
-        tbody.innerHTML += `<tr><td>${dartsThrown}</td><td>${displayScore}</td><td>${item.rest}</td><td>${item.details}</td></tr>`;
+        tbody.innerHTML += `<tr><td>${dartsThrown}</td><td>${displayScore}</td><td>${currentAvg}</td><td>${item.rest}</td><td>${item.details}</td></tr>`;
     });
 }
 
@@ -753,33 +762,4 @@ function showVictory() {
 function resetGame() {
     document.getElementById('abschlussseite').classList.add('hidden');
     document.getElementById('startseite').classList.remove('hidden');
-}
-
-function drawLiveBoard() {
-    const container = document.getElementById('live-board-layout');
-    if(!container) return;
-    let svg = `<svg class="dartboard-svg" viewBox="0 0 300 300" xmlns="http://www.w3.org/2000/svg"><circle cx="150" cy="150" r="145" fill="#0f0f0f"/>`;
-    const angleStep = 360 / 20; const startAngleOffset = -90 - (angleStep / 2);
-
-    sectors.forEach((num, index) => {
-        let currentAngle = startAngleOffset + (index * angleStep);
-        let radStart = (currentAngle * Math.PI) / 180; let radEnd = ((currentAngle + angleStep) * Math.PI) / 180;
-        let baseColor = (index % 2 === 0) ? '#0d2b1d' : '#f3e5ab';
-        svg += createSvgPath(107, 115, radStart, radEnd, '#e50914');
-        svg += createSvgPath(73, 107, radStart, radEnd, baseColor);
-        svg += createSvgPath(65, 73, radStart, radEnd, '#e50914');
-        svg += createSvgPath(14, 65, radStart, radEnd, baseColor);
-        let textRad = ((currentAngle + (angleStep / 2)) * Math.PI) / 180;
-        svg += `<text x="${150 + 130 * Math.cos(textRad)}" y="${150 + 130 * Math.sin(textRad)}" class="board-text">${num}</text>`;
-    });
-    svg += `<circle cx="150" cy="150" r="14" fill="#0d2b1d"/><circle cx="150" cy="150" r="6" fill="#e50914"/></svg>`;
-    container.innerHTML = svg;
-}
-
-function createSvgPath(rIn, rOut, aStart, aEnd, color) {
-    let pOStart = { x: 150 + rOut * Math.cos(aStart), y: 150 + rOut * Math.sin(aStart) };
-    let pOEnd = { x: 150 + rOut * Math.cos(aEnd), y: 150 + rOut * Math.sin(aEnd) };
-    let pIStart = { x: 150 + rIn * Math.cos(aStart), y: 150 + rIn * Math.sin(aStart) };
-    let pIEnd = { x: 150 + rIn * Math.cos(aEnd), y: 150 + rIn * Math.sin(aEnd) };
-    return `<path d="M ${pOStart.x} ${pOStart.y} A ${rOut} ${rOut} 0 0 1 ${pOEnd.x} ${pOEnd.y} L ${pIEnd.x} ${pIEnd.y} A ${rIn} ${rIn} 0 0 0 ${pIStart.x} ${pIStart.y} Z" fill="${color}" stroke="#111" stroke-width="0.5"/>`;
 }

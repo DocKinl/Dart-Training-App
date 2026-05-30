@@ -13,9 +13,9 @@ let isLockingInput = false;
 let currentVirtualSelectedMultiplier = 1; // 1 = Single, 2 = Double, 3 = Triple
 let currentActiveDartSlot = 1; // 1, 2 oder 3
 let virtualDartData = {
-    1: { val: null, label: "-", rawField: "", m: 1 },
-    2: { val: null, label: "-", rawField: "", m: 1 },
-    3: { val: null, label: "-", rawField: "", m: 1 }
+    1: { val: 0, label: "-", rawField: "", m: 1, key: "" },
+    2: { val: 0, label: "-", rawField: "", m: 1, key: "" },
+    3: { val: 0, label: "-", rawField: "", m: 1, key: "" }
 };
 let virtualSumValue = 0;
 
@@ -31,6 +31,8 @@ let currentTheme = 'dark';
 
 const sectors = [20, 1, 18, 4, 13, 6, 10, 15, 2, 17, 3, 19, 7, 16, 8, 11, 14, 9, 12, 5];
 const invalidFinishes = [169, 168, 166, 165, 163, 162, 159];
+// Alle mathematisch unmöglichen Scores bei 3 Darts von 0 bis 180
+const impossibleScores = [179, 178, 176, 175, 173, 172, 169, 166, 163, 162, 159];
 
 let recognition = null;
 let selectedVoice = null;
@@ -42,6 +44,7 @@ function safeInit() {
         setTimeout(safeInit, 50);
         return;
     }
+    populateSodTargets();
     initEventListeners();
     drawLiveBoard();
     initVoices();
@@ -55,6 +58,22 @@ if (document.readyState === 'loading') {
 
 if (typeof speechSynthesis !== 'undefined' && speechSynthesis.onvoiceschanged !== undefined) {
     speechSynthesis.onvoiceschanged = initVoices;
+}
+
+function populateSodTargets() {
+    const select = document.getElementById('sod-target-select');
+    if (!select) return;
+    select.innerHTML = "";
+    for(let i=20; i>=1; i--) {
+        let opt = document.createElement('option');
+        opt.value = i.toString();
+        opt.textContent = `Segment ${i}`;
+        select.appendChild(opt);
+    }
+    let optBull = document.createElement('option');
+    optBull.value = "bull";
+    optBull.textContent = "Bullseye";
+    select.appendChild(optBull);
 }
 
 function initVoices() {
@@ -125,7 +144,6 @@ function initEventListeners() {
         setSpeechInputState(val === 'true');
     });
 
-    // Setup Modus Listener
     setupGroupListeners('group-game-mode', (val, btn) => changeGameMode(val, btn));
     setupGroupListeners('group-players', (val, btn) => selectOption('group-players', btn));
     setupGroupListeners('group-input-mode', (val, btn) => selectOption('group-input-mode', btn));
@@ -135,9 +153,8 @@ function initEventListeners() {
     setupGroupListeners('group-fin-range', (val, btn) => selectOption('group-fin-range', btn));
     setupGroupListeners('group-atc-bonus', (val, btn) => selectOption('group-atc-bonus', btn));
     setupGroupListeners('group-sod-darts', (val, btn) => selectOption('group-sod-darts', btn));
-    setupGroupListeners('group-sod-target-virtual', (val, btn) => selectOption('group-sod-target-virtual', btn));
+    setupGroupListeners('group-sod-ring', (val, btn) => selectOption('group-sod-ring', btn));
 
-    // CLICK HANDLER FÜR DAS VIRTUELLE EINZEL-DARTS KEYPAD
     document.getElementById('vmult-1').onclick = () => setVirtualMultiplier(1);
     document.getElementById('vmult-2').onclick = () => setVirtualMultiplier(2);
     document.getElementById('vmult-3').onclick = () => setVirtualMultiplier(3);
@@ -151,12 +168,10 @@ function initEventListeners() {
 
     document.getElementById('vkey-clear-segments').onclick = clearLastVirtualDart;
 
-    // PREVIEW BOXEN KLICKBAR MACHEN (Um Darts gezielt korrigieren zu können)
     document.getElementById('box-d1').onclick = () => setActiveDartSlot(1);
     document.getElementById('box-d2').onclick = () => setActiveDartSlot(2);
     document.getElementById('box-d3').onclick = () => setActiveDartSlot(3);
 
-    // CLICK HANDLER FÜR DAS VIRTUELLE SUMMEN KEYPAD (SET)
     document.querySelectorAll('.keyboard-grid-sum .sumkey').forEach(btn => {
         btn.onclick = function() {
             let num = this.getAttribute('data-num');
@@ -174,7 +189,6 @@ function initEventListeners() {
     document.getElementById('vkey-clear-sum').onclick = () => { setVirtualSum(0); };
     document.getElementById('vkey-submit-sum').onclick = submitScore;
 
-    // Core Actions
     document.getElementById('btn-start-game').onclick = startGame;
     document.getElementById('btn-abort-game').onclick = abortGame;
     document.getElementById('submit-btn').onclick = submitScore;
@@ -191,9 +205,9 @@ function setupGroupListeners(groupId, callback) {
 
 function changeFinishingType(val, btn) {
     selectOption('group-fin-type', btn);
-    const targetGroup = document.getElementById('group-fin-range');
-    if (targetGroup && targetGroup.closest('.form-group')) {
-        targetGroup.closest('.form-group').style.display = (val === 'strict') ? 'none' : 'block';
+    const wrapper = document.getElementById('wrapper-fin-range');
+    if (wrapper) {
+        wrapper.style.display = (val === 'strict') ? 'none' : 'block';
     }
 }
 
@@ -228,7 +242,6 @@ function changeGameMode(mode, element) {
     }
 }
 
-// LOGIK FÜR DAS VIRTUELLE EINZEL-DARTS KEYPAD
 function setVirtualMultiplier(mValue) {
     currentVirtualSelectedMultiplier = mValue;
     document.querySelectorAll('[id^="vmult-"]').forEach(btn => btn.classList.remove('active'));
@@ -248,7 +261,7 @@ function inputVirtualDart(field) {
 
     let m = currentVirtualSelectedMultiplier;
     if (field === "bull") {
-        if (m === 3) m = 2; // Es gibt kein Triple Bull, Fallback auf Double Bull
+        if (m === 3) m = 2; 
     }
     if (field === "0") m = 1;
 
@@ -259,21 +272,23 @@ function inputVirtualDart(field) {
         val: parsed.val,
         label: parsed.label,
         rawField: field,
-        m: m
+        m: m,
+        key: parsed.key
     };
 
     updateDartPreviewDOM();
-    checkLiveBustSegment(currentActiveDartSlot);
+    
+    // Prüfe den Live-Bust, bricht bei Fehler intern ab
+    let wasBust = checkLiveBustSegment(currentActiveDartSlot);
 
-    // Auto-Jump zum nächsten freien Dart-Slot
-    if (currentActiveDartSlot < 3) {
+    if (!wasBust && currentActiveDartSlot < 3) {
         setActiveDartSlot(currentActiveDartSlot + 1);
     }
-    setVirtualMultiplier(1); // Reset auf Single für den nächsten Wurf
+    setVirtualMultiplier(1); 
 }
 
 function clearLastVirtualDart() {
-    virtualDartData[currentActiveDartSlot] = { val: null, label: "-", rawField: "", m: 1 };
+    virtualDartData[currentActiveDartSlot] = { val: 0, label: "-", rawField: "", m: 1, key: "" };
     updateDartPreviewDOM();
     document.getElementById('error-message').innerText = "";
 }
@@ -285,7 +300,6 @@ function updateDartPreviewDOM() {
     }
 }
 
-// LOGIK FÜR DAS VIRTUELLE SUMMEN KEYPAD (SET)
 function appendVirtualSum(digit) {
     let currentStr = virtualSumValue.toString();
     if (currentStr === "0") currentStr = "";
@@ -302,7 +316,6 @@ function setVirtualSum(value) {
     if (disp) disp.innerText = virtualSumValue;
 }
 
-// SPRACHAUSGABE (TTS)
 function speak(text) {
     if (!isSpeechOutputActive) return;
     let utterance = new SpeechSynthesisUtterance(text);
@@ -335,57 +348,6 @@ function speakTurnResult(score, rest) {
     window.speechSynthesis.speak(scoreUtterance);
 }
 
-// SPEECH INPUT LOGIK
-if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
-    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-    recognition = new SpeechRecognition();
-    recognition.lang = 'de-DE';
-    recognition.continuous = true;
-    recognition.interimResults = false;
-
-    recognition.onstart = () => { 
-        const icon = document.getElementById('icon-listening-modal');
-        if (icon) icon.classList.add('listening'); 
-    };
-    recognition.onend = () => {
-        if (isSpeechInputActive) recognition.start();
-    };
-    recognition.onresult = (event) => {
-        let resultText = event.results[event.results.length - 1][0].transcript.toLowerCase().trim();
-        verarbeiteSprachBefehl(resultText);
-    };
-}
-
-function setSpeechInputState(activate) {
-    if (!recognition) return;
-    isSpeechInputActive = activate;
-    if (isSpeechInputActive) {
-        try { recognition.start(); } catch(e){}
-    } else {
-        recognition.stop();
-    }
-}
-
-function verarbeiteSprachBefehl(phrase) {
-    if (document.getElementById('spielseite').classList.contains('hidden') || isLockingInput) return;
-    phrase = phrase.replace("dreifach", "triple").replace("doppel", "double").replace("drei", "3");
-
-    let m = 1; let field = "";
-    if (phrase.includes("triple") || phrase.includes("treble")) m = 3;
-    else if (phrase.includes("double")) m = 2;
-
-    let matchZahl = phrase.match(/\d+/);
-    if (matchZahl) field = matchZahl[0];
-    else if (phrase.includes("double bull")) { m = 2; field = "bull"; }
-    else if (phrase.includes("bull")) { m = 1; field = "bull"; }
-    else if (phrase.includes("kein treffer") || phrase.includes("null") || phrase.includes("miss")) { field = "0"; m = 1; }
-
-    if (field !== "") {
-        currentVirtualSelectedMultiplier = m;
-        inputVirtualDart(field);
-    }
-}
-
 function generateRandomFinish() {
     if (finTypeSetting === 'strict') {
         let validTargets = [];
@@ -395,9 +357,8 @@ function generateRandomFinish() {
     }
     let range = getSelectedValue('group-fin-range');
     let min = 2, max = 40;
-    if (range === 'mid') { min = 41; max = 100; }
-    else if (range === 'high') { min = 101; max = 170; }
-    else if (range === 'all') { min = 2; max = 170; }
+    if (range === 'mid') { min = 2; max = 80; }
+    else if (range === 'high') { min = 2; max = 170; }
 
     let target;
     do {
@@ -423,7 +384,7 @@ function startGame() {
         document.getElementById('game-title').innerText = `${initialPoints}er X01 Match`;
         if (inputMode === 'set') {
             document.getElementById('set-input-container').classList.remove('hidden');
-            document.getElementById('submit-btn').classList.add('hidden'); // Der grüne Checkmark-Button übernimmt
+            document.getElementById('submit-btn').classList.add('hidden');
         } else {
             document.getElementById('segment-input-container').classList.remove('hidden');
         }
@@ -446,7 +407,9 @@ function startGame() {
         document.getElementById('segment-input-container').classList.remove('hidden');
     } else if (activeGlobalMode === 'sod') {
         scores[1] = parseInt(getSelectedValue('group-sod-darts'));
-        document.getElementById('game-title').innerText = `Set of Darts (SOD)`;
+        let targetSegment = document.getElementById('sod-target-select').value;
+        let targetRing = getSelectedValue('group-sod-ring').toUpperCase();
+        document.getElementById('game-title').innerText = `Set of Darts (${targetRing} ${targetSegment.toUpperCase()})`;
         document.getElementById('segment-input-container').classList.remove('hidden');
     }
 
@@ -485,9 +448,9 @@ function abortGame() {
 
 function resetVirtualState() {
     virtualDartData = {
-        1: { val: 0, label: "-", rawField: "", m: 1 },
-        2: { val: 0, label: "-", rawField: "", m: 1 },
-        3: { val: 0, label: "-", rawField: "", m: 1 }
+        1: { val: 0, label: "-", rawField: "", m: 1, key: "" },
+        2: { val: 0, label: "-", rawField: "", m: 1, key: "" },
+        3: { val: 0, label: "-", rawField: "", m: 1, key: "" }
     };
     updateDartPreviewDOM();
     setActiveDartSlot(1);
@@ -496,9 +459,9 @@ function resetVirtualState() {
 }
 
 function parseSegmentData(fieldRaw, mult) {
-    if (!fieldRaw || fieldRaw === "") return { val: 0, label: "0" };
+    if (!fieldRaw || fieldRaw === "") return { val: 0, label: "0", key: "" };
     let clean = fieldRaw.trim().toLowerCase();
-    if (clean === "0") return { val: 0, label: "0" };
+    if (clean === "0") return { val: 0, label: "0", key: "0" };
     if (clean === "bull") {
         if (mult === 2) return { val: 50, label: "D-Bull", key: "d-bull" };
         return { val: 25, label: "Bull", key: "bull" };
@@ -535,9 +498,9 @@ function handleBustProcess(currentScore, scoredPoints, originalDetails) {
     }, 1800);
 }
 
+// LIVE BUST CHECK (Wird nach JEDEM getippten Dart gefeuert)
 function checkLiveBustSegment(currentDartIndex) {
     if (activeGlobalMode !== 'x01' && activeGlobalMode !== 'fin') return false;
-    if (activeGlobalMode === 'fin' && finTypeSetting === 'strict') return false;
 
     let d1 = virtualDartData[1].val || 0;
     let d2 = virtualDartData[2].val || 0;
@@ -548,16 +511,29 @@ function checkLiveBustSegment(currentDartIndex) {
     let remaining = currentScore - runningSum;
     
     let modeOut = (activeGlobalMode === 'fin') ? 'double' : outMode;
-    let isBust = remaining < 0 || (remaining === 1 && modeOut === 'double');
 
-    if (remaining === 0 && modeOut === 'double') {
-        let activeData = virtualDartData[currentDartIndex];
-        if (activeData.key && !activeData.key.startsWith('D') && activeData.key !== 'd-bull') isBust = true;
-    }
-
-    if (isBust) {
+    // Grundsätzlicher Überwurf (unter 0 Punkte gefallen)
+    if (remaining < 0) {
         handleBustProcess(currentScore, runningSum, `${virtualDartData[1].label}/${virtualDartData[2].label}/${virtualDartData[3].label}`);
         return true;
+    }
+
+    // Bei Double-Out ist ein Restwert von genau 1 Punkt unmöglich
+    if (remaining === 1 && modeOut === 'double') {
+        handleBustProcess(currentScore, runningSum, `${virtualDartData[1].label}/${virtualDartData[2].label}/${virtualDartData[3].label}`);
+        return true;
+    }
+
+    // Wenn exakt 0 Rest erreicht sind, MUSS es ein valider Checkout sein, sonst Bust
+    if (remaining === 0) {
+        if (modeOut === 'double') {
+            let activeData = virtualDartData[currentDartIndex];
+            if (!activeData.key || (!activeData.key.startsWith('D') && activeData.key !== 'd-bull')) {
+                handleBustProcess(currentScore, runningSum, `${virtualDartData[1].label}/${virtualDartData[2].label}/${virtualDartData[3].label}`);
+                return true;
+            }
+        }
+        // Wenn es ein korrekter Checkout war, triggern wir hier keinen Bust, sondern lassen den Spieler regulär auf "Bestätigen" drücken oder feuern es am Ende ab.
     }
     return false;
 }
@@ -578,6 +554,13 @@ function executeX01Turn() {
 
     if (inputMode === 'set') {
         totalScore = virtualSumValue;
+        
+        // Validierung mathematisch unmöglicher Summenwerte
+        if (impossibleScores.includes(totalScore)) {
+            document.getElementById('error-message').innerText = "Ungültige Score-Kombination!";
+            return;
+        }
+
         let remaining = currentScore - totalScore;
         if (remaining < 0 || (remaining === 1 && outMode === 'double') || (remaining === 0 && outMode === 'double' && totalScore < 2)) {
             handleBustProcess(currentScore, totalScore, "Summe"); return;
@@ -590,12 +573,19 @@ function executeX01Turn() {
 
         totalScore = d1 + d2 + d3;
         scoreDetails = `${virtualDartData[1].label}/${virtualDartData[2].label}/${virtualDartData[3].label}`;
+        
         let remaining = currentScore - totalScore;
         let isBust = remaining < 0 || (remaining === 1 && outMode === 'double');
+        
         if (remaining === 0 && outMode === 'double') {
-            let last = virtualDartData[3].label !== "-" ? virtualDartData[3] : (virtualDartData[2].label !== "-" ? virtualDartData[2] : virtualDartData[1]);
-            if (!last.key || (!last.key.startsWith('D') && last.key !== 'd-bull')) isBust = true;
+            // Finde den letzten tatsächlich geworfenen Dart für die Doppel-Prüfung heraus
+            let last = (virtualDartData[3].label !== "-") ? virtualDartData[3] : 
+                       ((virtualDartData[2].label !== "-") ? virtualDartData[2] : virtualDartData[1]);
+            if (!last.key || (!last.key.startsWith('D') && last.key !== 'd-bull')) {
+                isBust = true;
+            }
         }
+        
         if (isBust) { handleBustProcess(currentScore, totalScore, scoreDetails); return; }
         scores[activePlayer] = remaining;
     }
@@ -618,6 +608,7 @@ function executeFinishingTurn() {
 
     if (finTypeSetting === 'strict') {
         let isCheckout = false;
+        // Im Strict-Modus zählt nur das direkte Treffen des vorgegebenen Doppels
         for (let i = 0; i < darts.length; i++) {
             if (darts[i].val === originalTarget && darts[i].key && (darts[i].key.startsWith('D') || darts[i].key === 'd-bull')) {
                 isCheckout = true; break;
@@ -711,7 +702,7 @@ function executeATCTurn() {
 }
 
 function executeSODTurn() {
-    let targetField = getSelectedValue('group-sod-target-virtual');
+    let targetField = document.getElementById('sod-target-select').value;
     let targetRing = getSelectedValue('group-sod-ring');
     let darts = [virtualDartData[1], virtualDartData[2], virtualDartData[3]];
     let hitCount = 0;

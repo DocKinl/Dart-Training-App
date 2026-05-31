@@ -718,7 +718,7 @@ function handleBustProcess(currentScore, scoredPoints, originalDetails) {
         isLockingInput = false;
         if (activeGlobalMode !== 'fin') nextPlayer();
         resetVirtualState();
-    }, 1800);
+    }, 3000);
 }
 
 function checkLiveBustSegment(currentDartIndex) {
@@ -942,7 +942,7 @@ function nextPlayer() {
         setTimeout(() => {
             isLockingInput = false;
             executeBotTurn();
-        }, 1500);
+        }, 3000);
     }
 }
 

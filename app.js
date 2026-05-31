@@ -817,13 +817,21 @@ function executeX01Turn() {
     speakTurnResult(totalScore, scores[activePlayer]);
 
     if (scores[activePlayer] === 0) {
-        if(totalScore > matchStats[activePlayer].highestFinish) matchStats[activePlayer].highestFinish = totalScore;
-        if(legDartsCount[activePlayer] < matchStats[activePlayer].shortestLeg) matchStats[activePlayer].shortestLeg = legDartsCount[activePlayer];
-        handleLegOrSetWin();
-        return;
+    if(totalScore > matchStats[activePlayer].highestFinish) matchStats[activePlayer].highestFinish = totalScore;
+    if(legDartsCount[activePlayer] < matchStats[activePlayer].shortestLeg) matchStats[activePlayer].shortestLeg = legDartsCount[activePlayer];
+    handleLegOrSetWin();
+    return;
     }
-    nextPlayer(); resetVirtualState();
+    
+    // NEU: Verzögerung für die Sprachausgabe, bevor gewechselt wird
+    isLockingInput = true; 
+    setTimeout(() => {
+        isLockingInput = false;
+        nextPlayer(); 
+        resetVirtualState();
+    }, 1500); 
 }
+
 
 function handleLegOrSetWin() {
     let winner = activePlayer;

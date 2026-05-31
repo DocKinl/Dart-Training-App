@@ -829,7 +829,7 @@ function executeX01Turn() {
         isLockingInput = false;
         nextPlayer(); 
         resetVirtualState();
-    }, 1500); 
+    }, 3000); 
 }
 
 

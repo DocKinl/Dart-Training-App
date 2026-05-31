@@ -428,7 +428,6 @@ function speak(text, onEndCallback) {
     window.speechSynthesis.speak(utterance);
 }
 
-// NEU: Reagiert dynamisch, wenn die Ansage vollständig beendet ist
 function speakTurnResult(score, rest, onEndCallback) {
     if (!isSpeechOutputActive) {
         if (onEndCallback) onEndCallback();
@@ -446,7 +445,6 @@ function speakTurnResult(score, rest, onEndCallback) {
             restUtterance.lang = currentLanguageCode;
             if (selectedVoice) restUtterance.voice = selectedVoice;
             
-            // Erst wenn das Rest-Wort komplett fertig gesprochen wurde, feuert der Callback
             restUtterance.onend = () => {
                 if (onEndCallback) onEndCallback();
             };
@@ -708,16 +706,18 @@ function parseSegmentData(fieldRaw, mult) {
     return { val: num, label: `S${num}`, key: `S${num}` };
 }
 
-function handleBustProcess(currentScore, scoredPoints, originalDetails) {
+function handleBustProcess(currentScore, scoredPoints, originalDetails, actualDartsCount) {
     let isEn = currentLanguageCode.startsWith('en');
     let text = isEn ? "Bust!" : "Überworfen!";
     document.getElementById('error-message').innerText = text;
     
+    let dartsThrown = actualDartsCount || 3;
+
     if (activeGlobalMode === 'x01') {
-        matchStats[activePlayer].totalDarts += 3;
-        legDartsCount[activePlayer] += 3;
+        matchStats[activePlayer].totalDarts += dartsThrown;
+        legDartsCount[activePlayer] += dartsThrown;
         matchStats[activePlayer].turns += 1;
-        if (legDartsCount[activePlayer] <= 9) matchStats[activePlayer].first9Darts += 3;
+        if (legDartsCount[activePlayer] <= 9) matchStats[activePlayer].first9Darts += dartsThrown;
     }
 
     if (activeGlobalMode === 'fin') {
@@ -731,7 +731,6 @@ function handleBustProcess(currentScore, scoredPoints, originalDetails) {
     }
 
     isLockingInput = true;
-    // Spielerwechsel erst triggern, wenn die Ansage "Überworfen!" komplett fertig gesprochen wurde
     speak(text, () => {
         document.getElementById('error-message').innerText = "";
         isLockingInput = false;
@@ -753,14 +752,14 @@ function checkLiveBustSegment(currentDartIndex) {
     let modeOut = (activeGlobalMode === 'fin') ? 'double' : outMode;
 
     if (runningRemaining < 0 || (runningRemaining === 1 && modeOut === 'double')) {
-        handleBustProcess(currentScore, runningSum, `${virtualDartData[1].label}/${virtualDartData[2].label}/${virtualDartData[3].label}`);
+        handleBustProcess(currentScore, runningSum, `${virtualDartData[1].label}/${virtualDartData[2].label}/${virtualDartData[3].label}`, currentDartIndex);
         return true;
     }
 
     if (runningRemaining === 0 && modeOut === 'double') {
         let activeData = virtualDartData[currentDartIndex];
         if (!activeData.key || (!activeData.key.startsWith('D') && activeData.key !== 'd-bull')) {
-            handleBustProcess(currentScore, runningSum, `${virtualDartData[1].label}/${virtualDartData[2].label}/${virtualDartData[3].label}`);
+            handleBustProcess(currentScore, runningSum, `${virtualDartData[1].label}/${virtualDartData[2].label}/${virtualDartData[3].label}`, currentDartIndex);
             return true;
         }
     }
@@ -789,9 +788,23 @@ function executeX01Turn() {
             return;
         }
         let remaining = currentScore - totalScore;
+        
         if (remaining < 0 || (remaining === 1 && outMode === 'double') || (remaining === 0 && outMode === 'double' && totalScore < 2)) {
-            handleBustProcess(currentScore, totalScore, "Summe"); return;
+            let inputDarts = prompt("Überworfen! Wie viele Darts wurden in dieser Aufnahme geworfen? (1, 2 oder 3)", "3");
+            let parsedDarts = parseInt(inputDarts);
+            if (parsedDarts !== 1 && parsedDarts !== 2 && parsedDarts !== 3) parsedDarts = 3;
+            
+            handleBustProcess(currentScore, totalScore, "Summe", parsedDarts); 
+            return;
         }
+        
+        if (remaining === 0) {
+            let inputDarts = prompt("Match/Leg beendet! Wie viele Darts wurden für das Finish benötigt? (1, 2 oder 3)", "3");
+            let parsedDarts = parseInt(inputDarts);
+            if (parsedDarts !== 1 && parsedDarts !== 2 && parsedDarts !== 3) parsedDarts = 3;
+            dartsCountThisTurn = parsedDarts;
+        }
+        
         scores[activePlayer] = remaining; scoreDetails = "Aufnahme";
     } else {
         let d1 = virtualDartData[1].val || 0;
@@ -813,7 +826,10 @@ function executeX01Turn() {
             if (!last.key || (!last.key.startsWith('D') && last.key !== 'd-bull')) isBust = true;
         }
         
-        if (isBust) { handleBustProcess(currentScore, totalScore, scoreDetails); return; }
+        if (isBust) { 
+            handleBustProcess(currentScore, totalScore, scoreDetails, dartsCountThisTurn); 
+            return; 
+        }
         scores[activePlayer] = remaining;
     }
 
@@ -838,7 +854,6 @@ function executeX01Turn() {
         if(totalScore > matchStats[activePlayer].highestFinish) matchStats[activePlayer].highestFinish = totalScore;
         if(legDartsCount[activePlayer] < matchStats[activePlayer].shortestLeg) matchStats[activePlayer].shortestLeg = legDartsCount[activePlayer];
         
-        // Bei einem Leg- oder Setgewinn lassen wir die Punkte kurz ansagen und wechseln danach
         isLockingInput = true;
         speakTurnResult(totalScore, scores[activePlayer], () => {
             isLockingInput = false;
@@ -848,7 +863,6 @@ function executeX01Turn() {
     }
 
     isLockingInput = true;
-    // JETZT DYNAMISCH: Erst wenn die Stimme komplett stumm ist, wird umgeschaltet!
     speakTurnResult(totalScore, scores[activePlayer], () => {
         isLockingInput = false;
         nextPlayer(); 
@@ -884,7 +898,6 @@ function handleLegOrSetWin() {
     }
 }
 
-// Interne Hilfsfunktion für sauberen Leg-Wechsel nach Sprachbestätigung
 function proceedToNextLeg(winner) {
     scores[1] = initialPoints; 
     scores[2] = initialPoints;
@@ -1021,7 +1034,7 @@ function executeFinishingTurn() {
             }
         }
         if (runningScore < 0 || runningScore === 1 || (runningScore === 0 && !isCheckout)) {
-            handleBustProcess(originalTarget, totalScoredThisTurn, displayLabels.join('/')); return;
+            handleBustProcess(originalTarget, totalScoredThisTurn, displayLabels.join('/'), i + 1); return;
         }
     }
 

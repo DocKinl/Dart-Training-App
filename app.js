@@ -1,4 +1,6 @@
-// Globale State-Variablen
+// ==========================================
+// Globale State-Variablen & Konfiguration
+// ==========================================
 let activeGlobalMode = 'x01';
 let initialPoints = 501;
 let isTwoPlayers = false;
@@ -17,7 +19,7 @@ let histories = { 1: [], 2: [] };
 let activePlayer = 1;
 let isLockingInput = false;
 
-// Tracker für Statistiken (Echte Gesamtwerte)
+// Tracker für Statistiken (Echte Gesamtwerte basierend auf geworfenen Darts)
 let matchStats = {
     1: { totalPoints: 0, totalDarts: 0, first9Points: 0, first9Darts: 0, turns: 0, c100: 0, c140: 0, c180: 0, highestTurn: 0, highestFinish: 0, shortestLeg: 999 },
     2: { totalPoints: 0, totalDarts: 0, first9Points: 0, first9Darts: 0, turns: 0, c100: 0, c140: 0, c180: 0, highestTurn: 0, highestFinish: 0, shortestLeg: 999 }
@@ -50,10 +52,10 @@ const checkoutRoutes = {
     170: ["T20", "T20", "D50"], 167: ["T20", "T19", "D50"], 164: ["T20", "T18", "D50"], 161: ["T20", "T17", "D50"],
     160: ["T20", "T20", "D20"], 158: ["T20", "T20", "D19"], 157: ["T20", "T19", "D20"], 156: ["T20", "T20", "D18"],
     155: ["T20", "T19", "D19"], 154: ["T20", "T18", "D20"], 153: ["T20", "T19", "D18"], 152: ["T20", "T17", "D20"],
-    151: ["T20", "T17", "D19"], 150: ["T20", "T18", "D18"], 149: ["T20", "T19", "D16"], 148: ["T20", "T16", "D20"],
-    147: ["T20", "T17", "D18"], 146: ["T20", "T18", "D16"], 145: ["T20", "T15", "D20"], 144: ["T20", "T20", "D12"],
-    143: ["T20", "T17", "D16"], 142: ["T20", "T14", "D20"], 141: ["T20", "T15", "D18"], 140: ["T20", "T16", "D16"],
-    139: ["T19", "T14", "D20"], 138: ["T20", "T14", "D18"], 137: ["T19", "T16", "D16"], 136: ["T20", "T20", "D8"],
+    151: ["T20", "T17", "D19"], 150: ["T20", "T18", "D18"], 149: ["T20", "T19", "D16"], 148: ["T20", "S16", "D20"],
+    147: ["T20", "T17", "D18"], 146: ["T20", "T18", "D16"], 145: ["T20", "S15", "D20"], 144: ["T20", "T20", "D12"],
+    143: ["T20", "T17", "D16"], 142: ["T20", "S14", "D20"], 141: ["T20", "T15", "D18"], 140: ["T20", "T16", "D16"],
+    139: ["T19", "S14", "D20"], 138: ["T20", "S14", "D18"], 137: ["T19", "T16", "D16"], 136: ["T20", "T20", "D8"],
     135: ["T20", "T15", "D15"], 134: ["T20", "T14", "D16"], 133: ["T20", "T17", "D11"], 132: ["T20", "T16", "D12"],
     131: ["T20", "T13", "D16"], 130: ["T20", "T18", "D8"],  129: ["T19", "T16", "D12"], 128: ["T18", "T14", "D16"],
     127: ["T20", "T17", "D8"],  126: ["T19", "T19", "D6"],  125: ["T20", "T15", "D10"], 124: ["T20", "D16", "D16"],
@@ -69,6 +71,9 @@ const checkoutRoutes = {
 let selectedVoice = null;
 let currentLanguageCode = 'de-DE';
 
+// ==========================================
+// App-Initialisierung & Lifecycle
+// ==========================================
 function safeInit() {
     const startBtn = document.getElementById('btn-start-game');
     if (!startBtn) {
@@ -95,7 +100,7 @@ function populateSodTargets() {
     const select = document.getElementById('sod-target-select');
     if (!select) return;
     select.innerHTML = "";
-    for(let i=20; i>=1; i--) {
+    for(let i = 20; i >= 1; i--) {
         let opt = document.createElement('option');
         opt.value = i.toString();
         opt.textContent = `Segment ${i}`;
@@ -150,37 +155,54 @@ function initVoices() {
 function initSliderLabels() {
     const pSlider = document.getElementById('input-points-slider');
     if (pSlider) {
-        document.getElementById('points-slider-label').innerText = `Startpunkte: ${pSlider.value}`;
+        const lbl = document.getElementById('points-slider-label');
+        if (lbl) lbl.innerText = `Startpunkte: ${pSlider.value}`;
     }
     const lSlider = document.getElementById('input-legs-slider');
     if (lSlider) {
         let val = parseInt(lSlider.value);
-        document.getElementById('legs-slider-label').innerText = `Legs pro Set: Best of ${val} (First to ${Math.ceil(val / 2)})`;
+        const lbl = document.getElementById('legs-slider-label');
+        if (lbl) lbl.innerText = `Legs pro Set: Best of ${val} (First to ${Math.ceil(val / 2)})`;
     }
     const sSlider = document.getElementById('input-sets-slider');
     if (sSlider) {
         let val = parseInt(sSlider.value);
-        document.getElementById('sets-slider-label').innerText = `Sets zum Matchgewinn: Best of ${val} (First to ${Math.ceil(val / 2)})`;
+        const lbl = document.getElementById('sets-slider-label');
+        if (lbl) lbl.innerText = `Sets zum Matchgewinn: Best of ${val} (First to ${Math.ceil(val / 2)})`;
     }
 }
 
+// ==========================================
+// Event-Listener & UI-Interaktionen
+// ==========================================
 function initEventListeners() {
     document.querySelectorAll('.btn-settings-open').forEach(btn => {
-        btn.onclick = () => { document.getElementById('settings-modal').classList.remove('hidden'); };
+        btn.onclick = () => { 
+            const el = document.getElementById('settings-modal');
+            if (el) el.classList.remove('hidden'); 
+        };
     });
+    
     const settingsClose = document.getElementById('btn-settings-close');
     if (settingsClose) {
         settingsClose.onclick = () => { document.getElementById('settings-modal').classList.add('hidden'); };
     }
 
-    document.getElementById('btn-open-stats').onclick = openStatsModal;
-    document.getElementById('btn-stats-close').onclick = () => document.getElementById('stats-modal').classList.add('hidden');
-    document.getElementById('btn-clear-stats').onclick = () => {
-        if(confirm("Alle gespeicherten Daten unwiderruflich löschen?")) {
-            localStorage.removeItem('docKinl_dart_stats');
-            openStatsModal();
-        }
-    };
+    const openStats = document.getElementById('btn-open-stats');
+    if (openStats) openStats.onclick = openStatsModal;
+
+    const closeStats = document.getElementById('btn-stats-close');
+    if (closeStats) closeStats.onclick = () => document.getElementById('stats-modal').classList.add('hidden');
+
+    const clearStats = document.getElementById('btn-clear-stats');
+    if (clearStats) {
+        clearStats.onclick = () => {
+            if(confirm("Alle gespeicherten Daten unwiderruflich löschen?")) {
+                localStorage.removeItem('docKinl_dart_stats');
+                openStatsModal();
+            }
+        };
+    }
 
     setupGroupListeners('group-theme-select', (val, btn) => {
         selectOption('group-theme-select', btn);
@@ -204,14 +226,18 @@ function initEventListeners() {
     setupGroupListeners('group-game-mode', (val, btn) => changeGameMode(val, btn));
     setupGroupListeners('group-players', (val, btn) => {
         selectOption('group-players', btn);
-        if(val === 'bot') document.getElementById('options-bot').classList.remove('hidden');
-        else document.getElementById('options-bot').classList.add('hidden');
+        const botOptions = document.getElementById('options-bot');
+        if (botOptions) {
+            if(val === 'bot') botOptions.classList.remove('hidden');
+            else botOptions.classList.add('hidden');
+        }
     });
 
     const pointsSlider = document.getElementById('input-points-slider');
     if (pointsSlider) {
         pointsSlider.oninput = function() {
-            document.getElementById('points-slider-label').innerText = `Startpunkte: ${this.value}`;
+            const lbl = document.getElementById('points-slider-label');
+            if (lbl) lbl.innerText = `Startpunkte: ${this.value}`;
         };
     }
 
@@ -220,7 +246,8 @@ function initEventListeners() {
         legsSlider.oninput = function() {
             let val = parseInt(this.value);
             let firstTo = Math.ceil(val / 2);
-            document.getElementById('legs-slider-label').innerText = `Legs pro Set: Best of ${val} (First to ${firstTo})`;
+            const lbl = document.getElementById('legs-slider-label');
+            if (lbl) lbl.innerText = `Legs pro Set: Best of ${val} (First to ${firstTo})`;
         };
     }
 
@@ -229,7 +256,8 @@ function initEventListeners() {
         setsSlider.oninput = function() {
             let val = parseInt(this.value);
             let firstTo = Math.ceil(val / 2);
-            document.getElementById('sets-slider-label').innerText = `Sets zum Matchgewinn: Best of ${val} (First to ${firstTo})`;
+            const lbl = document.getElementById('sets-slider-label');
+            if (lbl) lbl.innerText = `Sets zum Matchgewinn: Best of ${val} (First to ${firstTo})`;
         };
     }
 
@@ -242,9 +270,9 @@ function initEventListeners() {
     setupGroupListeners('group-sod-darts', (val, btn) => selectOption('group-sod-darts', btn));
     setupGroupListeners('group-sod-ring', (val, btn) => selectOption('group-sod-ring', btn));
 
-    document.getElementById('vmult-1').onclick = () => setVirtualMultiplier(1);
-    document.getElementById('vmult-2').onclick = () => setVirtualMultiplier(2);
-    document.getElementById('vmult-3').onclick = () => setVirtualMultiplier(3);
+    const vm1 = document.getElementById('vmult-1'); if (vm1) vm1.onclick = () => setVirtualMultiplier(1);
+    const vm2 = document.getElementById('vmult-2'); if (vm2) vm2.onclick = () => setVirtualMultiplier(2);
+    const vm3 = document.getElementById('vmult-3'); if (vm3) vm3.onclick = () => setVirtualMultiplier(3);
 
     document.querySelectorAll('.keyboard-grid .numkey, [data-val="bull"], [data-val="0"]').forEach(btn => {
         btn.onclick = function() {
@@ -253,11 +281,12 @@ function initEventListeners() {
         };
     });
 
-    document.getElementById('vkey-clear-segments').onclick = clearLastVirtualDart;
+    const clearSegments = document.getElementById('vkey-clear-segments');
+    if (clearSegments) clearSegments.onclick = clearLastVirtualDart;
 
-    document.getElementById('box-d1').onclick = () => setActiveDartSlot(1);
-    document.getElementById('box-d2').onclick = () => setActiveDartSlot(2);
-    document.getElementById('box-d3').onclick = () => setActiveDartSlot(3);
+    const boxD1 = document.getElementById('box-d1'); if (boxD1) boxD1.onclick = () => setActiveDartSlot(1);
+    const boxD2 = document.getElementById('box-d2'); if (boxD2) boxD2.onclick = () => setActiveDartSlot(2);
+    const boxD3 = document.getElementById('box-d3'); if (boxD3) boxD3.onclick = () => setActiveDartSlot(3);
 
     document.querySelectorAll('.keyboard-grid-sum .sumkey').forEach(btn => {
         btn.onclick = function() {
@@ -273,13 +302,23 @@ function initEventListeners() {
         };
     });
 
-    document.getElementById('vkey-clear-sum').onclick = () => { setVirtualSum(0); };
-    document.getElementById('vkey-submit-sum').onclick = submitScore;
+    const clearSum = document.getElementById('vkey-clear-sum');
+    if (clearSum) clearSum.onclick = () => { setVirtualSum(0); };
 
-    document.getElementById('btn-start-game').onclick = startGame;
-    document.getElementById('btn-abort-game').onclick = abortGame;
-    document.getElementById('submit-btn').onclick = submitScore;
-    document.getElementById('btn-reset-game').onclick = resetGame;
+    const submitSum = document.getElementById('vkey-submit-sum');
+    if (submitSum) submitSum.onclick = submitScore;
+
+    const startGameBtn = document.getElementById('btn-start-game');
+    if (startGameBtn) startGameBtn.onclick = startGame;
+
+    const abortGameBtn = document.getElementById('btn-abort-game');
+    if (abortGameBtn) abortGameBtn.onclick = abortGame;
+
+    const submitBtn = document.getElementById('submit-btn');
+    if (submitBtn) submitBtn.onclick = submitScore;
+
+    const resetGameBtn = document.getElementById('btn-reset-game');
+    if (resetGameBtn) resetGameBtn.onclick = resetGame;
 }
 
 function setupGroupListeners(groupId, callback) {
@@ -309,32 +348,48 @@ function getSelectedValue(groupId) {
 function changeGameMode(mode, element) {
     selectOption('group-game-mode', element);
     activeGlobalMode = mode;
-    document.getElementById('options-x01').classList.add('hidden');
-    document.getElementById('options-fin').classList.add('hidden');
-    document.getElementById('options-atc').classList.add('hidden');
-    document.getElementById('options-sod').classList.add('hidden');
-    document.getElementById('wrapper-players').classList.remove('hidden');
-    document.getElementById('options-bot').classList.add('hidden');
+    
+    const elementsToHide = ['options-x01', 'options-fin', 'options-atc', 'options-sod', 'options-bot'];
+    elementsToHide.forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.classList.add('hidden');
+    });
+
+    const wrapperPlayers = document.getElementById('wrapper-players');
+    if (wrapperPlayers) wrapperPlayers.classList.remove('hidden');
 
     if (mode === 'x01') {
-        document.getElementById('options-x01').classList.remove('hidden');
-        if(getSelectedValue('group-players') === 'bot') document.getElementById('options-bot').classList.remove('hidden');
+        const optX01 = document.getElementById('options-x01');
+        if (optX01) optX01.classList.remove('hidden');
+        if(getSelectedValue('group-players') === 'bot') {
+            const optBot = document.getElementById('options-bot');
+            if (optBot) optBot.classList.remove('hidden');
+        }
     }
     else if (mode === 'fin') {
-        document.getElementById('options-fin').classList.remove('hidden');
-        document.getElementById('wrapper-players').classList.add('hidden');
+        const optFin = document.getElementById('options-fin');
+        if (optFin) optFin.classList.remove('hidden');
+        if (wrapperPlayers) wrapperPlayers.classList.add('hidden');
     }
-    else if (mode === 'atc') document.getElementById('options-atc').classList.remove('hidden');
+    else if (mode === 'atc') {
+        const optAtc = document.getElementById('options-atc');
+        if (optAtc) optAtc.classList.remove('hidden');
+    }
     else if (mode === 'sod') {
-        document.getElementById('options-sod').classList.remove('hidden');
-        document.getElementById('wrapper-players').classList.add('hidden');
+        const optSod = document.getElementById('options-sod');
+        if (optSod) optSod.classList.remove('hidden');
+        if (wrapperPlayers) wrapperPlayers.classList.add('hidden');
     }
 }
 
+// ==========================================
+// Virtuelles Keyboard Steuerung & Live-Bust
+// ==========================================
 function setVirtualMultiplier(mValue) {
     currentVirtualSelectedMultiplier = mValue;
     document.querySelectorAll('[id^="vmult-"]').forEach(btn => btn.classList.remove('active'));
-    document.getElementById(`vmult-${mValue}`).classList.add('active');
+    const targetBtn = document.getElementById(`vmult-${mValue}`);
+    if (targetBtn) targetBtn.classList.add('active');
 }
 
 function setActiveDartSlot(slotNum) {
@@ -346,7 +401,8 @@ function setActiveDartSlot(slotNum) {
 
 function inputVirtualDart(field) {
     if (isLockingInput) return;
-    document.getElementById('error-message').innerText = "";
+    const errMsg = document.getElementById('error-message');
+    if (errMsg) errMsg.innerText = "";
 
     let m = currentVirtualSelectedMultiplier;
     if (field === "bull" && m === 3) m = 2; 
@@ -381,7 +437,8 @@ function inputVirtualDart(field) {
 function clearLastVirtualDart() {
     virtualDartData[currentActiveDartSlot] = { val: 0, label: "-", rawField: "", m: 1, key: "" };
     updateDartPreviewDOM();
-    document.getElementById('error-message').innerText = "";
+    const errMsg = document.getElementById('error-message');
+    if (errMsg) errMsg.innerText = "";
     if (activeGlobalMode === 'x01' && inputMode === 'segment') {
         calculateLiveTurnCheckout();
     }
@@ -408,8 +465,11 @@ function setVirtualSum(value) {
     if (disp) disp.innerText = virtualSumValue;
 }
 
+// ==========================================
+// Text-to-Speech (TTS) & Checkout Logik
+// ==========================================
 function speak(text) {
-    if (!isSpeechOutputActive) return;
+    if (!isSpeechOutputActive || typeof speechSynthesis === 'undefined') return;
     let utterance = new SpeechSynthesisUtterance(text);
     utterance.lang = currentLanguageCode;
     if (selectedVoice) utterance.voice = selectedVoice;
@@ -417,7 +477,7 @@ function speak(text) {
 }
 
 function speakTurnResult(score, rest) {
-    if (!isSpeechOutputActive) return;
+    if (!isSpeechOutputActive || typeof speechSynthesis === 'undefined') return;
     window.speechSynthesis.cancel();
     let scoreUtterance = new SpeechSynthesisUtterance(score.toString());
     scoreUtterance.lang = currentLanguageCode;
@@ -436,7 +496,7 @@ function speakTurnResult(score, rest) {
 }
 
 function triggerCheckoutHelperVoice(score) {
-    if(!isSpeechOutputActive || !isCheckoutHelperActive || score > 170 || invalidFinishes.includes(score)) return;
+    if(!isSpeechOutputActive || !isCheckoutHelperActive || score > 170 || invalidFinishes.includes(score) || typeof speechSynthesis === 'undefined') return;
     let route = null;
     if (checkoutRoutes[score]) route = checkoutRoutes[score];
     else if (score <= 40 && score % 2 === 0) route = ["D" + (score/2)];
@@ -448,7 +508,9 @@ function triggerCheckoutHelperVoice(score) {
         let utterance = new SpeechSynthesisUtterance(text);
         utterance.lang = currentLanguageCode;
         if(selectedVoice) utterance.voice = selectedVoice;
-        setTimeout(() => window.speechSynthesis.speak(utterance), 1200);
+        setTimeout(() => {
+            if (typeof speechSynthesis !== 'undefined') window.speechSynthesis.speak(utterance);
+        }, 1200);
     }
 }
 
@@ -469,10 +531,9 @@ function calculateLiveTurnCheckout() {
     let currentRemainingScore = currentScore - (d1 + d2 + d3);
 
     let isEn = currentLanguageCode.startsWith('en');
-
     if (currentRemainingScore === 0) return;
 
-    // KORREKTUR: Wenn die Gesamtpunktzahl vor Beginn ODER die Restpunktzahl JETZT über 170 liegt, komplett schweigen.
+    // Wenn die Gesamtpunktzahl vor Beginn ODER die Restpunktzahl JETZT über 170 liegt, schweigen.
     if (currentScore > 170 && currentRemainingScore > 170) {
         return; 
     }
@@ -519,6 +580,9 @@ function calculateLiveTurnCheckout() {
     }
 }
 
+// ==========================================
+// Game-Flow Steuerung (Start, Reset, Abort)
+// ==========================================
 function generateRandomFinish() {
     if (finTypeSetting === 'strict') {
         let validTargets = [];
@@ -545,14 +609,23 @@ function startGame() {
     botLevel = getSelectedValue('group-bot-level');
     inputMode = (activeGlobalMode === 'x01') ? getSelectedValue('group-input-mode') : 'segment';
 
-    document.getElementById('set-input-container').classList.add('hidden');
-    document.getElementById('segment-input-container').classList.add('hidden');
-    document.getElementById('p1-sub').classList.add('hidden');
-    document.getElementById('p1-title').innerText = "Spieler 1";
-    document.getElementById('p2-title').innerText = isBotMatch ? `Computer (${botLevel.toUpperCase()})` : "Spieler 2";
-    document.getElementById('h1-header').innerText = "Verlauf S1";
-    document.getElementById('h2-header').innerText = isBotMatch ? "Verlauf Bot" : "Verlauf S2";
-    document.getElementById('submit-btn').classList.remove('hidden');
+    const setInputContainer = document.getElementById('set-input-container');
+    const segmentInputContainer = document.getElementById('segment-input-container');
+    const p1Sub = document.getElementById('p1-sub');
+    const p1Title = document.getElementById('p1-title');
+    const p2Title = document.getElementById('p2-title');
+    const h1Header = document.getElementById('h1-header');
+    const h2Header = document.getElementById('h2-header');
+    const submitBtn = document.getElementById('submit-btn');
+
+    if (setInputContainer) setInputContainer.classList.add('hidden');
+    if (segmentInputContainer) segmentInputContainer.classList.add('hidden');
+    if (p1Sub) p1Sub.classList.add('hidden');
+    if (p1Title) p1Title.innerText = "Spieler 1";
+    if (p2Title) p2Title.innerText = isBotMatch ? `Computer (${botLevel.toUpperCase()})` : "Spieler 2";
+    if (h1Header) h1Header.innerText = "Verlauf S1";
+    if (h2Header) h2Header.innerText = isBotMatch ? "Verlauf Bot" : "Verlauf S2";
+    if (submitBtn) submitBtn.classList.remove('hidden');
 
     matchStats = {
         1: { totalPoints: 0, totalDarts: 0, first9Points: 0, first9Darts: 0, turns: 0, c100: 0, c140: 0, c180: 0, highestTurn: 0, highestFinish: 0, shortestLeg: 999 },
@@ -562,76 +635,92 @@ function startGame() {
     legDartsCount = { 1: 0, 2: 0 };
 
     if (activeGlobalMode === 'x01') {
-        initialPoints = parseInt(document.getElementById('input-points-slider').value);
+        const pSlider = document.getElementById('input-points-slider');
+        initialPoints = pSlider ? parseInt(pSlider.value) : 501;
         scores[1] = initialPoints; scores[2] = initialPoints;
 
-        let legsValue = parseInt(document.getElementById('input-legs-slider').value);
-        let setsValue = parseInt(document.getElementById('input-sets-slider').value);
+        const lSlider = document.getElementById('input-legs-slider');
+        const sSlider = document.getElementById('input-sets-slider');
+        let legsValue = lSlider ? parseInt(lSlider.value) : 5;
+        let setsValue = sSlider ? parseInt(sSlider.value) : 3;
         
         window.legsRequiredForSet = Math.ceil(legsValue / 2);
         window.setsRequiredForMatch = Math.ceil(setsValue / 2);
 
-        document.getElementById('game-title').innerText = `${initialPoints}er Match (Best of ${setsValue} Sets, Legs pro Set: Best of ${legsValue})`;
+        const gTitle = document.getElementById('game-title');
+        if (gTitle) gTitle.innerText = `${initialPoints}er Match (Best of ${setsValue} Sets, Legs pro Set: Best of ${legsValue})`;
 
         if (inputMode === 'set') {
-            document.getElementById('set-input-container').classList.remove('hidden');
-            document.getElementById('submit-btn').classList.add('hidden');
+            if (setInputContainer) setInputContainer.classList.remove('hidden');
+            if (submitBtn) submitBtn.classList.add('hidden');
         } else {
-            document.getElementById('segment-input-container').classList.remove('hidden');
+            if (segmentInputContainer) segmentInputContainer.classList.remove('hidden');
         }
-        document.getElementById('p1-legs-sets').classList.remove('hidden');
-        document.getElementById('p2-legs-sets').classList.remove('hidden');
-        document.getElementById('p1-live-avg').classList.remove('hidden');
-        document.getElementById('p2-live-avg').classList.remove('hidden');
+        
+        const p1LS = document.getElementById('p1-legs-sets'); if (p1LS) p1LS.classList.remove('hidden');
+        const p2LS = document.getElementById('p2-legs-sets'); if (p2LS) p2LS.classList.remove('hidden');
+        const p1LA = document.getElementById('p1-live-avg'); if (p1LA) p1LA.classList.remove('hidden');
+        const p2LA = document.getElementById('p2-live-avg'); if (p2LA) p2LA.classList.remove('hidden');
     } else {
-        document.getElementById('p1-legs-sets').classList.add('hidden');
-        document.getElementById('p2-legs-sets').classList.add('hidden');
-        document.getElementById('p1-live-avg').classList.add('hidden');
-        document.getElementById('p2-live-avg').classList.add('hidden');
+        const p1LS = document.getElementById('p1-legs-sets'); if (p1LS) p1LS.classList.add('hidden');
+        const p2LS = document.getElementById('p2-legs-sets'); if (p2LS) p2LS.classList.add('hidden');
+        const p1LA = document.getElementById('p1-live-avg'); if (p1LA) p1LA.classList.add('hidden');
+        const p2LA = document.getElementById('p2-live-avg'); if (p2LA) p2LA.classList.add('hidden');
+        
         if (activeGlobalMode === 'fin') {
             finAttempts = 0;
             finTypeSetting = getSelectedValue('group-fin-type');
             finTargetScore = generateRandomFinish();
             scores[1] = finTargetScore;
             let typeLabel = finTypeSetting === 'strict' ? 'Exakt' : 'Realistisch';
-            document.getElementById('game-title').innerText = `Finishing (${typeLabel})`;
-            document.getElementById('p1-title').innerText = "Target Finish";
-            document.getElementById('h1-header').innerText = "Würfe-Log";
-            document.getElementById('p1-sub').classList.remove('hidden');
-            document.getElementById('p1-sub').innerText = `Versuch: 1`;
-            document.getElementById('segment-input-container').classList.remove('hidden');
+            const gTitle = document.getElementById('game-title');
+            if (gTitle) gTitle.innerText = `Finishing (${typeLabel})`;
+            if (p1Title) p1Title.innerText = "Target Finish";
+            if (h1Header) h1Header.innerText = "Würfe-Log";
+            if (p1Sub) {
+                p1Sub.classList.remove('hidden');
+                p1Sub.innerText = `Versuch: 1`;
+            }
+            if (segmentInputContainer) segmentInputContainer.classList.remove('hidden');
         } else if (activeGlobalMode === 'atc') {
             scores[1] = 1; scores[2] = 1;
-            document.getElementById('game-title').innerText = `Around the Clock (ATC)`;
-            document.getElementById('segment-input-container').classList.remove('hidden');
+            const gTitle = document.getElementById('game-title');
+            if (gTitle) gTitle.innerText = `Around the Clock (ATC)`;
+            if (segmentInputContainer) segmentInputContainer.classList.remove('hidden');
         } else if (activeGlobalMode === 'sod') {
-            scores[1] = parseInt(getSelectedValue('group-sod-darts'));
+            scores[1] = parseInt(getSelectedValue('group-sod-darts')) || 30;
             let targetSegment = document.getElementById('sod-target-select').value;
             let targetRing = getSelectedValue('group-sod-ring').toUpperCase();
-            document.getElementById('game-title').innerText = `Set of Darts (${targetRing} ${targetSegment.toUpperCase()})`;
-            document.getElementById('segment-input-container').classList.remove('hidden');
+            const gTitle = document.getElementById('game-title');
+            if (gTitle) gTitle.innerText = `Set of Darts (${targetRing} ${targetSegment.toUpperCase()})`;
+            if (segmentInputContainer) segmentInputContainer.classList.remove('hidden');
         }
     }
 
     histories[1] = []; histories[2] = []; activePlayer = 1; isLockingInput = false;
     updateScoreboardDisplays();
 
-    document.getElementById('p1-history-list').innerHTML = "";
-    document.getElementById('p2-history-list').innerHTML = "";
-    document.getElementById('p1-card').classList.add('active');
-    document.getElementById('p2-card').classList.remove('active');
+    const p1Hist = document.getElementById('p1-history-list'); if (p1Hist) p1Hist.innerHTML = "";
+    const p2Hist = document.getElementById('p2-history-list'); if (p2Hist) p2Hist.innerHTML = "";
+    
+    const p1Card = document.getElementById('p1-card'); if (p1Card) p1Card.classList.add('active');
+    const p2Card = document.getElementById('p2-card'); if (p2Card) p2Card.classList.remove('active');
 
-    if (isTwoPlayers || isBotMatch) {
-        document.getElementById('p2-card').classList.remove('hidden');
-        document.getElementById('p2-history-box').classList.remove('hidden');
-    } else {
-        document.getElementById('p2-card').classList.add('hidden');
-        document.getElementById('p2-history-box').classList.add('hidden');
+    const p2CardBox = document.getElementById('p2-card');
+    const p2HistBox = document.getElementById('p2-history-box');
+    if (p2CardBox && p2HistBox) {
+        if (isTwoPlayers || isBotMatch) {
+            p2CardBox.classList.remove('hidden');
+            p2HistBox.classList.remove('hidden');
+        } else {
+            p2CardBox.classList.add('hidden');
+            p2HistBox.classList.add('hidden');
+        }
     }
 
     resetVirtualState();
-    document.getElementById('startseite').classList.add('hidden');
-    document.getElementById('spielseite').classList.remove('hidden');
+    const startseite = document.getElementById('startseite'); if (startseite) startseite.classList.add('hidden');
+    const spielseite = document.getElementById('spielseite'); if (spielseite) spielseite.classList.remove('hidden');
     
     if(activeGlobalMode === 'fin') {
         let isEn = currentLanguageCode.startsWith('en');
@@ -642,23 +731,24 @@ function startGame() {
 }
 
 function updateScoreboardDisplays() {
-    document.getElementById('p1-score').innerText = (activeGlobalMode === 'atc' && scores[1] === 21) ? "BULL" : scores[1];
-    document.getElementById('p2-score').innerText = (activeGlobalMode === 'atc' && scores[2] === 21) ? "BULL" : scores[2];
-    document.getElementById('p1-legs-sets').innerText = `Legs: ${legs[1]} | Sets: ${sets[1]}`;
-    document.getElementById('p2-legs-sets').innerText = `Legs: ${legs[2]} | Sets: ${sets[2]}`;
+    const p1ScoreEl = document.getElementById('p1-score'); if (p1ScoreEl) p1ScoreEl.innerText = (activeGlobalMode === 'atc' && scores[1] === 21) ? "BULL" : scores[1];
+    const p2ScoreEl = document.getElementById('p2-score'); if (p2ScoreEl) p2ScoreEl.innerText = (activeGlobalMode === 'atc' && scores[2] === 21) ? "BULL" : scores[2];
+    
+    const p1LS = document.getElementById('p1-legs-sets'); if (p1LS) p1LS.innerText = `Legs: ${legs[1]} | Sets: ${sets[1]}`;
+    const p2LS = document.getElementById('p2-legs-sets'); if (p2LS) p2LS.innerText = `Legs: ${legs[2]} | Sets: ${sets[2]}`;
 
-    // KORREKTUR: Live-Anzeige berechnet nun den 3-Dart-Average
+    // Live-Anzeige berechnet den echten 3-Dart-Average
     let p1TripleAvg = matchStats[1].totalDarts > 0 ? ((matchStats[1].totalPoints / matchStats[1].totalDarts) * 3).toFixed(1) : "0.0";
     let p2TripleAvg = matchStats[2].totalDarts > 0 ? ((matchStats[2].totalPoints / matchStats[2].totalDarts) * 3).toFixed(1) : "0.0";
     
-    document.getElementById('p1-live-avg').innerText = `Ø ${p1TripleAvg} (${matchStats[1].totalDarts} Darts)`;
-    document.getElementById('p2-live-avg').innerText = `Ø ${p2TripleAvg} (${matchStats[2].totalDarts} Darts)`;
+    const p1LiveAvgEl = document.getElementById('p1-live-avg'); if (p1LiveAvgEl) p1LiveAvgEl.innerText = `Ø ${p1TripleAvg} (${matchStats[1].totalDarts} Darts)`;
+    const p2LiveAvgEl = document.getElementById('p2-live-avg'); if (p2LiveAvgEl) p2LiveAvgEl.innerText = `Ø ${p2TripleAvg} (${matchStats[2].totalDarts} Darts)`;
 }
 
 function abortGame() {
     if (confirm("Spiel wirklich abbrechen?")) {
-        document.getElementById('spielseite').classList.add('hidden');
-        document.getElementById('startseite').classList.remove('hidden');
+        const spielseite = document.getElementById('spielseite'); if (spielseite) spielseite.classList.add('hidden');
+        const startseite = document.getElementById('startseite'); if (startseite) startseite.classList.remove('hidden');
     }
 }
 
@@ -689,10 +779,14 @@ function parseSegmentData(fieldRaw, mult) {
     return { val: num, label: `S${num}`, key: `S${num}` };
 }
 
+// ==========================================
+// Turn Execution & Scoring Logic
+// ==========================================
 function handleBustProcess(currentScore, scoredPoints, originalDetails) {
     let isEn = currentLanguageCode.startsWith('en');
     let text = isEn ? "Bust!" : "Überworfen!";
-    document.getElementById('error-message').innerText = text;
+    const errMsg = document.getElementById('error-message');
+    if (errMsg) errMsg.innerText = text;
     speak(text);
     
     if (activeGlobalMode === 'x01') {
@@ -707,14 +801,16 @@ function handleBustProcess(currentScore, scoredPoints, originalDetails) {
         addHistoryEntry(1, scoredPoints, finTargetScore, originalDetails, true);
         scores[1] = finTargetScore;
         updateScoreboardDisplays();
-        document.getElementById('p1-sub').innerText = `Versuch: ${finAttempts + 1}`;
+        const p1Sub = document.getElementById('p1-sub');
+        if (p1Sub) p1Sub.innerText = `Versuch: ${finAttempts + 1}`;
     } else {
         addHistoryEntry(activePlayer, scoredPoints, currentScore, originalDetails, true);
     }
 
     isLockingInput = true;
     setTimeout(() => {
-        document.getElementById('error-message').innerText = "";
+        const errClean = document.getElementById('error-message');
+        if (errClean) errClean.innerText = "";
         isLockingInput = false;
         if (activeGlobalMode !== 'fin') nextPlayer();
         resetVirtualState();
@@ -750,7 +846,8 @@ function checkLiveBustSegment(currentDartIndex) {
 
 function submitScore() {
     if (isLockingInput) return;
-    document.getElementById('error-message').innerText = "";
+    const errMsg = document.getElementById('error-message');
+    if (errMsg) errMsg.innerText = "";
 
     if (activeGlobalMode === 'x01') executeX01Turn();
     else if (activeGlobalMode === 'fin') executeFinishingTurn();
@@ -766,7 +863,8 @@ function executeX01Turn() {
     if (inputMode === 'set') {
         totalScore = virtualSumValue;
         if (impossibleScores.includes(totalScore)) {
-            document.getElementById('error-message').innerText = "Ungültige Score-Kombination!";
+            const errMsg = document.getElementById('error-message');
+            if (errMsg) errMsg.innerText = "Ungültige Score-Kombination!";
             return;
         }
         let remaining = currentScore - totalScore;
@@ -817,13 +915,13 @@ function executeX01Turn() {
     speakTurnResult(totalScore, scores[activePlayer]);
 
     if (scores[activePlayer] === 0) {
-    if(totalScore > matchStats[activePlayer].highestFinish) matchStats[activePlayer].highestFinish = totalScore;
-    if(legDartsCount[activePlayer] < matchStats[activePlayer].shortestLeg) matchStats[activePlayer].shortestLeg = legDartsCount[activePlayer];
-    handleLegOrSetWin();
-    return;
+        if(totalScore > matchStats[activePlayer].highestFinish) matchStats[activePlayer].highestFinish = totalScore;
+        if(legDartsCount[activePlayer] < matchStats[activePlayer].shortestLeg) matchStats[activePlayer].shortestLeg = legDartsCount[activePlayer];
+        handleLegOrSetWin();
+        return;
     }
     
-    // NEU: Verzögerung für die Sprachausgabe, bevor gewechselt wird
+    // Verzögerung für die vollständige TTS-Sprachausgabe vor dem Spielerwechsel
     isLockingInput = true; 
     setTimeout(() => {
         isLockingInput = false;
@@ -831,7 +929,6 @@ function executeX01Turn() {
         resetVirtualState();
     }, 3000); 
 }
-
 
 function handleLegOrSetWin() {
     let winner = activePlayer;
@@ -855,7 +952,7 @@ function handleLegOrSetWin() {
         speak(isEn ? "Leg finished!" : "Leg beendet!");
     }
     
-    // KORREKTUR: Zurücksetzen für das nächste Leg korrigiert, damit die Zählung und das Protokoll nicht einfrieren
+    // Korrektes, vollständiges Zurücksetzen für das nächste Leg
     scores[1] = initialPoints; 
     scores[2] = initialPoints;
     legDartsCount[1] = 0; 
@@ -863,8 +960,8 @@ function handleLegOrSetWin() {
     histories[1] = []; 
     histories[2] = [];
     
-    document.getElementById('p1-history-list').innerHTML = "";
-    document.getElementById('p2-history-list').innerHTML = "";
+    const p1Hist = document.getElementById('p1-history-list'); if (p1Hist) p1Hist.innerHTML = "";
+    const p2Hist = document.getElementById('p2-history-list'); if (p2Hist) p2Hist.innerHTML = "";
     updateScoreboardDisplays();
     
     activePlayer = (winner === 1) ? 2 : 1; 
@@ -876,6 +973,9 @@ function handleLegOrSetWin() {
     }
 }
 
+// ==========================================
+// Bot Engine & Match Modus KI
+// ==========================================
 function executeBotTurn() {
     if(!isBotMatch || activePlayer !== 2 || isLockingInput) return;
     
@@ -886,10 +986,10 @@ function executeBotTurn() {
 
     let botRest = scores[2];
     let darts = [];
-    let currentDartScore = 0;
+    let currentBotScore = 0;
 
     for (let slot = 1; slot <= 3; slot++) {
-        let remainingNow = botRest - currentDartScore;
+        let remainingNow = botRest - currentBotScore;
         if (remainingNow <= 1) break; 
         
         let dartVal = 0; let label = "0"; let key = "0"; let m = 1;
@@ -918,9 +1018,9 @@ function executeBotTurn() {
             } else { dartVal = 0; label = "0"; }
         }
 
-        currentDartScore += dartVal;
+        currentBotScore += dartVal;
         darts.push({val: dartVal, label: label, key: key, m: m});
-        if (botRest - currentDartScore === 0 && (outMode === 'single' || (outMode === 'double' && m === 2))) break;
+        if (botRest - currentBotScore === 0 && (outMode === 'single' || (outMode === 'double' && m === 2))) break;
     }
 
     while(darts.length < 3) darts.push({val: 0, label: "-", key: "", m: 1});
@@ -931,9 +1031,14 @@ function executeBotTurn() {
 
 function nextPlayer() {
     if (!isTwoPlayers && !isBotMatch) return;
-    document.getElementById(`p${activePlayer}-card`).classList.remove('active');
+    
+    const currCard = document.getElementById(`p${activePlayer}-card`);
+    if (currCard) currCard.classList.remove('active');
+    
     activePlayer = activePlayer === 1 ? 2 : 1;
-    document.getElementById(`p${activePlayer}-card`).classList.add('active');
+    
+    const nextCard = document.getElementById(`p${activePlayer}-card`);
+    if (nextCard) nextCard.classList.add('active');
 
     if (activeGlobalMode === 'x01') triggerCheckoutHelperVoice(scores[activePlayer]);
 
@@ -946,6 +1051,9 @@ function nextPlayer() {
     }
 }
 
+// ==========================================
+// Zusätzliche Trainingsmodi (Finishing, ATC, SOD)
+// ==========================================
 function executeFinishingTurn() {
     let d1 = virtualDartData[1]; let d2 = virtualDartData[2]; let d3 = virtualDartData[3];
     let darts = [d1, d2, d3];
@@ -962,18 +1070,18 @@ function executeFinishingTurn() {
         let scoreDetails = `${d1.label}/${d2.label}/${d3.label}`;
         if (isCheckout) {
             finAttempts++; histories[1] = [];
-            window.speechSynthesis.cancel();
+            if (typeof speechSynthesis !== 'undefined') window.speechSynthesis.cancel();
             speak(isEn ? `Leg finished!` : `Leg beendet!`);
             alert(isEn ? `Checked ${originalTarget} in ${finAttempts} throws.` : `Sauber! Du hast das Finish ${originalTarget} in ${finAttempts} Aufnahmen gecheckt.`);
             finAttempts = 0; finTargetScore = generateRandomFinish(); scores[1] = finTargetScore;
             updateScoreboardDisplays();
-            document.getElementById('p1-sub').innerText = `Versuch: 1`;
-            document.getElementById('p1-history-list').innerHTML = "";
+            const p1Sub = document.getElementById('p1-sub'); if (p1Sub) p1Sub.innerText = `Versuch: 1`;
+            const p1Hist = document.getElementById('p1-history-list'); if (p1Hist) p1Hist.innerHTML = "";
             speak(isEn ? "Next target is " + finTargetScore : "Nächstes Ziel ist " + finTargetScore);
         } else {
             finAttempts++;
             addHistoryEntry(1, isEn ? "No Check" : "Kein Check", finTargetScore, scoreDetails, false);
-            document.getElementById('p1-sub').innerText = `Versuch: ${finAttempts + 1}`;
+            const p1Sub = document.getElementById('p1-sub'); if (p1Sub) p1Sub.innerText = `Versuch: ${finAttempts + 1}`;
             speak(isEn ? "No checkout" : "Kein Checkout");
         }
         resetVirtualState(); return;
@@ -1001,18 +1109,18 @@ function executeFinishingTurn() {
     let scoreDetails = displayLabels.join('/');
     if (isCheckout) {
         finAttempts++; histories[1] = [];
-        window.speechSynthesis.cancel();
+        if (typeof speechSynthesis !== 'undefined') window.speechSynthesis.cancel();
         speak(isEn ? `Leg finished!` : `Leg beendet!`);
         alert(isEn ? `Nice! Checked ${originalTarget} in ${finAttempts} throws.` : `Sauber! Du hast das Finish ${originalTarget} in ${finAttempts} Aufnahmen gecheckt.`);
         finAttempts = 0; finTargetScore = generateRandomFinish(); scores[1] = finTargetScore;
         updateScoreboardDisplays();
-        document.getElementById('p1-sub').innerText = `Versuch: 1`;
-        document.getElementById('p1-history-list').innerHTML = "";
+        const p1Sub = document.getElementById('p1-sub'); if (p1Sub) p1Sub.innerText = `Versuch: 1`;
+        const p1Hist = document.getElementById('p1-history-list'); if (p1Hist) p1Hist.innerHTML = "";
         speak(isEn ? "Next target is " + finTargetScore : "Nächstes Ziel ist " + finTargetScore);
     } else {
         finAttempts++; scores[1] = runningScore;
         updateScoreboardDisplays();
-        document.getElementById('p1-sub').innerText = `Versuch: ${finAttempts + 1}`;
+        const p1Sub = document.getElementById('p1-sub'); if (p1Sub) p1Sub.innerText = `Versuch: ${finAttempts + 1}`;
         addHistoryEntry(1, totalScoredThisTurn, scores[1], scoreDetails, false);
         speakTurnResult(totalScoredThisTurn, scores[1]);
     }
@@ -1070,6 +1178,9 @@ function executeSODTurn() {
     resetVirtualState();
 }
 
+// ==========================================
+// Verlauf-Log & All-Time Statistikverwaltung
+// ==========================================
 function addHistoryEntry(player, score, rest, details, isBust) {
     histories[player].unshift({ score, rest, details, isBust });
     const tbody = document.getElementById(`p${player}-history-list`);
@@ -1084,17 +1195,17 @@ function addHistoryEntry(player, score, rest, details, isBust) {
 }
 
 function showVictory(winnerId) {
-    document.getElementById('spielseite').classList.add('hidden');
-    document.getElementById('abschlussseite').classList.remove('hidden');
+    const spielseite = document.getElementById('spielseite'); if (spielseite) spielseite.classList.add('hidden');
+    const abschlussseite = document.getElementById('abschlussseite'); if (abschlussseite) abschlussseite.classList.remove('hidden');
     
     let p1Name = "Spieler 1";
     let p2Name = isBotMatch ? `Computer (${botLevel.toUpperCase()})` : "Spieler 2";
     
-    document.getElementById('winner-announcement').innerText = winnerId === 1 ? `${p1Name} gewinnt das Match!` : `${p2Name} gewinnt das Match!`;
-    document.getElementById('th-p1-name').innerText = p1Name;
-    document.getElementById('th-p2-name').innerText = p2Name;
+    const winnerAnnounce = document.getElementById('winner-announcement'); if (winnerAnnounce) winnerAnnounce.innerText = winnerId === 1 ? `${p1Name} gewinnt das Match!` : `${p2Name} gewinnt das Match!`;
+    const thP1 = document.getElementById('th-p1-name'); if (thP1) thP1.innerText = p1Name;
+    const thP2 = document.getElementById('th-p2-name'); if (thP2) thP2.innerText = p2Name;
 
-    // KORREKTUR: Umstellung auf 3-Dart-Average in der Spielzusammenfassung
+    // Umstellung auf echten 3-Dart-Average in der Spielzusammenfassung
     let p1Avg = matchStats[1].totalDarts > 0 ? ((matchStats[1].totalPoints / matchStats[1].totalDarts) * 3).toFixed(1) : "0.0";
     let p2Avg = matchStats[2].totalDarts > 0 ? ((matchStats[2].totalPoints / matchStats[2].totalDarts) * 3).toFixed(1) : "0.0";
     
@@ -1105,14 +1216,16 @@ function showVictory(winnerId) {
     let p2Shortest = matchStats[2].shortestLeg === 999 ? "-" : `${matchStats[2].shortestLeg} Darts`;
 
     const summaryBody = document.getElementById('summary-stats-body');
-    summaryBody.innerHTML = `
-        <tr><td>3-Dart-Average (Ø3)</td><td><b>${p1Avg}</b></td><td><b>${p2Avg}</b></td></tr>
-        <tr><td>First 9 Average (Ø3)</td><td>${p1F9}</td><td>${p2F9}</td></tr>
-        <tr><td>Höchste Aufnahme</td><td>${matchStats[1].highestTurn}</td><td>${matchStats[2].highestTurn}</td></tr>
-        <tr><td>Höchstes Checkout</td><td>${matchStats[1].highestFinish}</td><td>${matchStats[2].highestFinish}</td></tr>
-        <tr><td>Shortest Leg</td><td>${p1Shortest}</td><td>${p2Shortest}</td></tr>
-        <tr><td>100+ / 140+ / 180er</td><td>${matchStats[1].c100} / ${matchStats[1].c140} / ${matchStats[1].c180}</td><td>${matchStats[2].c100} / ${matchStats[2].c140} / ${matchStats[2].c180}</td></tr>
-    `;
+    if (summaryBody) {
+        summaryBody.innerHTML = `
+            <tr><td>3-Dart-Average (Ø3)</td><td><b>${p1Avg}</b></td><td><b>${p2Avg}</b></td></tr>
+            <tr><td>First 9 Average (Ø3)</td><td>${p1F9}</td><td>${p2F9}</td></tr>
+            <tr><td>Höchste Aufnahme</td><td>${matchStats[1].highestTurn}</td><td>${matchStats[2].highestTurn}</td></tr>
+            <tr><td>Höchstes Checkout</td><td>${matchStats[1].highestFinish}</td><td>${matchStats[2].highestFinish}</td></tr>
+            <tr><td>Shortest Leg</td><td>${p1Shortest}</td><td>${p2Shortest}</td></tr>
+            <tr><td>100+ / 140+ / 180er</td><td>${matchStats[1].c100} / ${matchStats[1].c140} / ${matchStats[1].c180}</td><td>${matchStats[2].c100} / ${matchStats[2].c140} / ${matchStats[2].c180}</td></tr>
+        `;
+    }
 
     if (activeGlobalMode === 'x01') {
         saveMatchToLocalStorage(parseFloat(p1Avg), matchStats[1].highestTurn, matchStats[1].highestFinish, matchStats[1].c180);
@@ -1138,16 +1251,16 @@ function openStatsModal() {
     let raw = localStorage.getItem('docKinl_dart_stats');
     let stats = raw ? JSON.parse(raw) : { totalGames: 0, sumAvg: 0, highestTurn: 0, highestFinish: 0, total180s: 0 };
     
-    document.getElementById('stat-total-games').innerText = stats.totalGames;
-    document.getElementById('stat-alltime-avg').innerText = stats.totalGames > 0 ? (stats.sumAvg / stats.totalGames).toFixed(1) : "0.0";
-    document.getElementById('stat-highest-turn').innerText = stats.highestTurn;
-    document.getElementById('stat-highest-co').innerText = stats.highestFinish;
-    document.getElementById('stat-total-180s').innerText = stats.total180s;
+    const totalGamesEl = document.getElementById('stat-total-games'); if (totalGamesEl) totalGamesEl.innerText = stats.totalGames;
+    const alltimeAvgEl = document.getElementById('stat-alltime-avg'); if (alltimeAvgEl) alltimeAvgEl.innerText = stats.totalGames > 0 ? (stats.sumAvg / stats.totalGames).toFixed(1) : "0.0";
+    const highTurnEl = document.getElementById('stat-highest-turn'); if (highTurnEl) highTurnEl.innerText = stats.highestTurn;
+    const highCoEl = document.getElementById('stat-highest-co'); if (highCoEl) highCoEl.innerText = stats.highestFinish;
+    const total180sEl = document.getElementById('stat-total-180s'); if (total180sEl) total180sEl.innerText = stats.total180s;
 
-    document.getElementById('stats-modal').classList.remove('hidden');
+    const statsModal = document.getElementById('stats-modal'); if (statsModal) statsModal.classList.remove('hidden');
 }
 
 function resetGame() {
-    document.getElementById('abschlussseite').classList.add('hidden');
-    document.getElementById('startseite').classList.remove('hidden');
+    const abschlussseite = document.getElementById('abschlussseite'); if (abschlussseite) abschlussseite.classList.add('hidden');
+    const startseite = document.getElementById('startseite'); if (startseite) startseite.classList.remove('hidden');
 }

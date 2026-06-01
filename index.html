@@ -2,428 +2,574 @@
 <html lang="de">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>DocKinl Dart Scorer</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DocKinl Darts Trainer Pro</title>
     <style>
+        /* Grundlegendes CSS & CSS Variablen */
         :root {
             --bg-color: #121212;
             --card-bg: #1e1e1e;
             --text-color: #ffffff;
-            --border-color: #444444;
-            --input-bg: #2a2a2a;
-            --btn-opt-bg: #333333;
-            --player-active-bg: #2a1616;
-            --accent-color: #e50914;
-            --accent-hover: #133e2b;
-            --gold-text: #f3e5ab;
-            --btn-num-bg: #2d2d2d;
-            --btn-action-bg: #444444;
-            --shortcut-bg: #25352e;
-            --shortcut-text: #ffffff;
+            --text-muted: #b3b3b3;
+            --accent-color: #ff9800;
+            --accent-hover: #e68a00;
+            --active-border: #ff9800;
+            --border-color: #333333;
+            --success-color: #4caf50;
+            --danger-color: #f44336;
         }
 
         .light-theme {
-            --bg-color: #f4f4f9;
+            --bg-color: #f5f5f5;
             --card-bg: #ffffff;
-            --text-color: #333333;
-            --border-color: #cccccc;
-            --input-bg: #f0f0f0;
-            --btn-opt-bg: #e0e0e0;
-            --player-active-bg: #ffebee;
-            --accent-color: #e50914;
-            --accent-hover: #d00812;
-            --gold-text: #b8860b;
-            --btn-num-bg: #e0e0e0;
-            --btn-action-bg: #bdbdbd;
-            --shortcut-bg: #d1e7dd;
-            --shortcut-text: #0f5132;
+            --text-color: #212121;
+            --text-muted: #666666;
+            --accent-color: #2196f3;
+            --accent-hover: #1e88e5;
+            --active-border: #2196f3;
+            --border-color: #e0e0e0;
         }
 
-        body { font-family: sans-serif; background: var(--bg-color); color: var(--text-color); padding: 10px; margin: 0; transition: background 0.3s, color 0.3s; touch-action: manipulation; }
-        .container { max-width: 600px; margin: 0 auto; position: relative; }
-        .card { background: var(--card-bg); padding: 15px; border-radius: 8px; margin-bottom: 15px; box-shadow: 0 4px 6px rgba(0,0,0,0.3); position: relative; }
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            transition: background-color 0.3s, color 0.3s;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0auto;
+            padding: 20px;
+        }
+
         .hidden { display: none !important; }
-        .form-group { margin-bottom: 15px; }
-        label { display: block; margin-bottom: 5px; font-weight: bold; color: var(--text-color); opacity: 0.8; }
-        select { width: 100%; padding: 10px; background: var(--input-bg); color: var(--text-color); border: 1px solid var(--border-color); border-radius: 4px; box-sizing: border-box; }
-        .btn-group { display: flex; gap: 8px; margin-bottom: 10px; flex-wrap: wrap; }
-        .btn-option { flex: 1; padding: 10px; background: var(--btn-opt-bg); border: 1px solid var(--border-color); color: var(--text-color); cursor: pointer; border-radius: 4px; text-align: center; min-width: 70px; user-select: none; font-size: 14px; }
-        .btn-option.active { background: var(--accent-color); border-color: #ff1e27; font-weight: bold; color: #fff; }
-        .btn-main { width: 100%; padding: 14px; background: #0d2b1d; border: 1px solid #1b4d36; color: #fff; font-size: 16px; cursor: pointer; border-radius: 4px; font-weight: bold; text-align: center; }
-        .btn-main:hover { background: var(--accent-hover); }
-        .btn-abort { background: #444; border: 1px solid #555; margin-top: 10px; padding: 8px; font-size: 12px; }
         
-        .settings-trigger { position: absolute; top: 15px; right: 15px; font-size: 24px; cursor: pointer; background: transparent; border: none; color: var(--text-color); opacity: 0.7; z-index: 10; }
-        
-        .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); display: flex; justify-content: center; align-items: center; z-index: 100; padding: 10px; box-sizing: border-box; }
-        .modal-content { background: var(--card-bg); border: 1px solid var(--border-color); padding: 25px; border-radius: 8px; width: 90%; max-width: 450px; box-shadow: 0 4px 15px rgba(0,0,0,0.5); position: relative; max-height: 90vh; overflow-y: auto; }
-        .modal-close { position: absolute; top: 15px; right: 15px; font-size: 20px; cursor: pointer; background: transparent; border: none; color: var(--text-color); opacity: 0.7; }
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 15px;
+            margin-bottom: 20px;
+        }
 
-        .game-layout { display: flex; gap: 10px; }
-        .player-card { flex: 1; background: var(--input-bg); padding: 10px; border-radius: 6px; text-align: center; border: 2px solid transparent; }
-        .player-card.active { border-color: var(--accent-color); background: var(--player-active-bg); }
-        .score-display { font-size: 42px; font-weight: bold; margin: 5px 0; color: var(--gold-text); }
-        .legs-sets-display { font-size: 13px; opacity: 0.8; margin-top: 4px; font-weight: bold; }
-        .live-avg-display { font-size: 12px; color: var(--gold-text); opacity: 0.9; margin-top: 2px; font-style: italic; }
-        .history-table { width: 100%; border-collapse: collapse; margin-top: 5px; font-size: 12px; }
-        .history-table th, .history-table td { border-bottom: 1px solid var(--border-color); padding: 4px; text-align: center; }
-        .history-table th { color: var(--text-color); opacity: 0.5; }
-        .error-msg { color: var(--accent-color); font-weight: bold; text-align: center; margin: 5px 0; height: 22px; font-size: 16px; }
+        h1, h2, h3 { margin: 0; }
+        
+        .btn, .btn-option {
+            background-color: var(--card-bg);
+            color: var(--text-color);
+            border: 1px solid var(--border-color);
+            padding: 10px 18px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 500;
+            font-size: 14px;
+            transition: all 0.2s;
+        }
 
-        .dart-live-preview { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 5px; margin-bottom: 10px; text-align: center; }
-        .preview-box { background: var(--input-bg); padding: 8px; border-radius: 4px; border: 1px solid var(--border-color); font-size: 14px; }
-        .preview-box.active-slot { border-color: var(--gold-text); background: rgba(243, 229, 171, 0.1); }
-        
-        .keyboard-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; margin-top: 10px; }
-        .keyboard-grid-sum { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin-top: 10px; }
-        .keyboard-grid-shortcuts { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; margin-bottom: 10px; }
-        
-        .btn-key { background: var(--btn-num-bg); border: 1px solid var(--border-color); color: var(--text-color); padding: 12px 5px; font-size: 16px; font-weight: bold; border-radius: 4px; cursor: pointer; text-align: center; user-select: none; }
-        .btn-key:active { opacity: 0.6; }
-        .btn-key.modifier { background: var(--btn-action-bg); color: #fff; }
-        .btn-key.modifier.active { background: var(--gold-text); color: #000; border-color: var(--gold-text); }
-        .btn-key.action-clear { background: #555; color: #fff; }
-        .btn-key.shortcut { background: var(--shortcut-bg); color: var(--shortcut-text); border-color: var(--border-color); font-size: 13px; padding: 8px 2px; }
+        .btn:hover { border-color: var(--accent-color); }
+        .btn-primary {
+            background-color: var(--accent-color);
+            color: #121212;
+            border: none;
+            font-weight: bold;
+        }
+        .btn-primary:hover { background-color: var(--accent-hover); color: #fff; }
 
-        .sum-display-box { background: var(--input-bg); border: 1px solid var(--border-color); border-radius: 6px; padding: 12px; text-align: center; font-size: 28px; font-weight: bold; color: var(--gold-text); margin-bottom: 10px; min-height: 34px; }
+        .btn-option.active {
+            background-color: var(--accent-color);
+            color: #121212;
+            border-color: var(--accent-color);
+            font-weight: bold;
+        }
+
+        .toggle-group {
+            display: flex;
+            gap: 8px;
+            margin-top: 8px;
+            flex-wrap: wrap;
+        }
+
+        /* NEU: CSS für den Spracherkennungs-Mic-Button */
+        #mic-button-wrapper {
+            display: flex;
+            justify-content: center;
+            margin: 15px 0;
+        }
+
+        .btn-action-mic {
+            background-color: var(--card-bg);
+            color: var(--text-color);
+            border: 2px solid var(--border-color);
+            width: 56px;
+            height: 56px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+
+        /* Zustand: Dauermodus läuft im Hintergrund */
+        .btn-action-mic.mic-active-continuous {
+            border-color: var(--accent-color);
+            color: var(--accent-color);
+        }
+
+        /* Zustand: Mikrofon lauscht JETZT aktiv auf Sprache */
+        .btn-action-mic.mic-listening {
+            border-color: var(--success-color);
+            background-color: rgba(76, 175, 80, 0.1);
+            color: var(--success-color);
+            animation: pulse-mic 1.5s infinite;
+        }
+
+        /* Zustand: Stummgeschaltet im Dauermodus (Mute) */
+        .btn-action-mic.mic-muted {
+            border-color: var(--danger-color);
+            background-color: rgba(244, 67, 54, 0.1);
+            color: var(--danger-color);
+        }
+
+        @keyframes pulse-mic {
+            0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(76, 175, 80, 0.4); }
+            70% { transform: scale(1.05); box-shadow: 0 0 0 10px rgba(76, 175, 80, 0); }
+            100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(76, 175, 80, 0); }
+        }
+
+        /* Cards & Layout */
+        .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+        @media(max-width: 768px) { .grid-2 { grid-template-columns: 1fr; } }
+
+        .card {
+            background-color: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 20px;
+        }
+
+        .card.active { border-color: var(--active-border); box-shadow: 0 0 10px rgba(255,152,0,0.2); }
         
-        .stats-table { width: 100%; border-collapse: collapse; margin: 15px 0; font-size: 14px; }
-        .stats-table td, .stats-table th { padding: 8px; border: 1px solid var(--border-color); text-align: left; }
-        .stats-table th { background: var(--input-bg); color: var(--gold-text); }
-        .stats-table td:nth-child(2), .stats-table td:nth-child(3) { text-align: center; }
+        .score-display { font-size: 72px; font-weight: bold; text-align: center; margin: 15px 0; font-family: monospace; }
+        .sub-info { text-align: center; color: var(--text-muted); font-size: 14px; margin-bottom: 5px; }
+
+        .form-group { margin-bottom: 20px; }
+        .form-group label { display: block; font-weight: 500; margin-bottom: 6px; }
+
+        .slider { width: 100%; margin-top: 8px; }
+        
+        /* Keypads */
+        .keyboard-grid, .keyboard-grid-sum {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 10px;
+            margin-top: 15px;
+        }
+        .keyboard-grid-shortcuts {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 8px;
+            margin-top: 10px;
+        }
+
+        .key, .numkey, .sumkey, .shortcut {
+            background-color: var(--bg-color);
+            border: 1px solid var(--border-color);
+            color: var(--text-color);
+            padding: 15px 5px;
+            text-align: center;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 16px;
+            user-select: none;
+        }
+        .key:hover, .numkey:hover, .sumkey:hover, .shortcut:hover { border-color: var(--accent-color); }
+        .key.active { background-color: var(--accent-color); color: #121212; }
+
+        .preview-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 15px; }
+        .preview-box {
+            background-color: var(--bg-color);
+            border: 1px solid var(--border-color);
+            padding: 12px 5px;
+            text-align: center;
+            border-radius: 6px;
+            font-weight: 500;
+            cursor: pointer;
+        }
+        .preview-box.active-slot { border-color: var(--accent-color); background-color: rgba(255,152,0,0.05); }
+
+        .sum-display-box {
+            font-size: 32px;
+            font-weight: bold;
+            text-align: center;
+            background-color: var(--bg-color);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            padding: 10px;
+            margin-bottom: 10px;
+            font-family: monospace;
+        }
+
+        /* Tabellen für Verläufe */
+        .history-box { margin-top: 20px; max-height: 200px; overflow-y: auto; }
+        table { width: 100%; border-collapse: collapse; font-size: 14px; }
+        th, td { padding: 8px; text-align: left; border-bottom: 1px solid var(--border-color); }
+        th { color: var(--text-muted); font-weight: 500; }
+
+        /* Modals */
+        .modal-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background-color: rgba(0,0,0,0.6); display: flex; align-items: center; justify-content: center; z-index: 100;
+        }
+        .modal-content {
+            background-color: var(--card-bg); border: 1px solid var(--border-color);
+            border-radius: 8px; padding: 25px; max-width: 500px; width: 90%; max-height: 85vh; overflow-y: auto;
+        }
+
+        .error-banner { color: var(--danger-color); text-align: center; font-weight: 500; min-height: 20px; margin-top: 10px; }
     </style>
 </head>
 <body>
 
-<div class="container">
-
-    <div id="startseite" class="card">
-        <button class="settings-trigger btn-settings-open">⚙️</button>
-        <h2 style="text-align: center; color: var(--accent-color); margin-top: 0; letter-spacing: 1px;">DocKinl Dart Scorer</h2>
+    <div class="container">
         
-        <div class="form-group">
-            <label>Spielmodus</label>
-            <div class="btn-group" id="group-game-mode">
-                <div class="btn-option active" data-value="x01">X01</div>
-                <div class="btn-option" data-value="fin">Finishing</div>
-                <div class="btn-option" data-value="atc">ATC</div>
-                <div class="btn-option" data-value="sod">Set of Darts</div>
+        <header>
+            <h2 id="app-main-title">DocKinl Darts Trainer Pro</h2>
+            <div>
+                <button class="btn btn-settings-open" style="margin-right: 5px;">⚙ Einstellungen</button>
+                <button class="btn" id="btn-open-stats">📊 Alltime-Stats</button>
+            </div>
+        </header>
+
+        <div id="startseite">
+            <div class="card" style="margin-bottom: 20px;">
+                <h3 style="margin-bottom: 15px;">Neues Spiel konfigurieren</h3>
+                
+                <div class="form-group">
+                    <label>Spielmodus</label>
+                    <div class="toggle-group" id="group-game-mode">
+                        <button class="btn-option active" data-value="x01">X01 Match</button>
+                        <button class="btn-option" data-value="fin">Finishing</button>
+                        <button class="btn-option" data-value="atc">Around the Clock</button>
+                        <button class="btn-option" data-value="sod">Set of Darts</button>
+                    </div>
+                </div>
+
+                <div class="form-group" id="wrapper-players">
+                    <label>Gegner</label>
+                    <div class="toggle-group" id="group-players">
+                        <button class="btn-option active" data-value="1">Single Player</button>
+                        <button class="btn-option" data-value="2">2 Spieler (Lokal)</button>
+                        <button class="btn-option" data-value="bot">Computer-Bot</button>
+                    </div>
+                </div>
+
+                <div id="options-x01">
+                    <div class="form-group">
+                        <label id="points-slider-label">Startpunkte: 501</label>
+                        <input type="range" id="input-points-slider" class="slider" min="101" max="1001" step="100" value="501">
+                    </div>
+                    <div class="form-group">
+                        <label>Eingabe-Modus</label>
+                        <div class="toggle-group" id="group-input-mode">
+                            <button class="btn-option active" data-value="segment">Darts einzeln (Segment)</button>
+                            <button class="btn-option" data-value="set">Aufnahme (Summe)</button>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>Out-Modus</label>
+                        <div class="toggle-group" id="group-out">
+                            <button class="btn-option active" data-value="double">Double Out</button>
+                            <button class="btn-option" data-value="single">Straight Out</button>
+                        </div>
+                    </div>
+                    <div class="grid-2">
+                        <div class="form-group">
+                            <label id="legs-slider-label">Legs pro Set</label>
+                            <input type="range" id="input-legs-slider" class="slider" min="1" max="11" step="2" value="5">
+                        </div>
+                        <div class="form-group">
+                            <label id="sets-slider-label">Sets zum Matchgewinn</label>
+                            <input type="range" id="input-sets-slider" class="slider" min="1" max="9" step="2" value="1">
+                        </div>
+                    </div>
+                </div>
+
+                <div id="options-bot" class="hidden">
+                    <div class="form-group">
+                        <label>Bot-Schwierigkeit</label>
+                        <div class="toggle-group" id="group-bot-level">
+                            <button class="btn-option" data-value="easy">Easy (Ø ~35)</button>
+                            <button class="btn-option active" data-value="medium">Medium (Ø ~50)</button>
+                            <button class="btn-option" data-value="strong">Strong (Ø ~75)</button>
+                            <button class="btn-option" data-value="insane">Insane (Ø ~95)</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="options-fin" class="hidden">
+                    <div class="form-group">
+                        <label>Finishing Typ</label>
+                        <div class="toggle-group" id="group-fin-type">
+                            <button class="btn-option active" data-value="realistic">Realistischer Spielverlauf (Darts abziehen)</button>
+                            <button class="btn-option" data-value="strict">Exakter Check-Zwang pro Aufnahme</button>
+                        </div>
+                    </div>
+                    <div class="form-group" id="wrapper-fin-range">
+                        <label>Finish Bereich</label>
+                        <div class="toggle-group" id="group-fin-range">
+                            <button class="btn-option active" data-value="low">Low (2 - 40)</button>
+                            <button class="btn-option" data-value="mid">Medium (2 - 80)</button>
+                            <button class="btn-option" data-value="high">High (2 - 170)</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="options-atc" class="hidden">
+                    <div class="form-group">
+                        <label>Treffer-Modus</label>
+                        <div class="toggle-group" id="group-atc-bonus">
+                            <button class="btn-option active" data-value="classic">Klassisch (1 Feld weiter pro Treffer)</button>
+                            <button class="btn-option" data-value="bonus">Multiplikator-Bonus (Doppel=2, Triple=3 Felder)</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="options-sod" class="hidden">
+                    <div class="grid-2">
+                        <div class="form-group">
+                            <label>Anzahl Pfeile (Darts)</label>
+                            <div class="toggle-group" id="group-sod-darts">
+                                <button class="btn-option" data-value="30">30 Darts</button>
+                                <button class="btn-option active" data-value="60">60 Darts</button>
+                                <button class="btn-option" data-value="90">90 Darts</button>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label>Zielsegment wählen</label>
+                            <select id="sod-target-select" class="btn" style="width:100%; padding:11px; margin-top:8px; text-align:left;"></select>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>Zielring</label>
+                        <div class="toggle-group" id="group-sod-ring">
+                            <button class="btn-option active" data-value="single">Beliebiges Segment (Single)</button>
+                            <button class="btn-option" data-value="double">Nur Doppel-Ring</button>
+                            <button class="btn-option" data-value="treble">Nur Triple-Ring</button>
+                        </div>
+                    </div>
+                </div>
+
+                <button id="btn-start-game" class="btn btn-primary" style="width: 100%; padding: 14px; font-size: 16px; margin-top: 10px;">Spiel starten 🎯</button>
             </div>
         </div>
 
-        <div class="form-group" id="wrapper-players">
-            <label>Gegner-Auswahl</label>
-            <div class="btn-group" id="group-players">
-                <div class="btn-option active" data-value="1">Solo</div>
-                <div class="btn-option" data-value="bot">vs. Computer</div>
-                <div class="btn-option" data-value="2">vs. Spieler 2</div>
+        <div id="spielseite" class="hidden">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                <h3 id="game-title">501er Match</h3>
+                <button id="btn-abort-game" class="btn" style="border-color: var(--danger-color); color: var(--danger-color);">Abbrechen</button>
             </div>
-        </div>
 
-        <div id="options-bot" class="hidden">
-            <div class="form-group">
-                <label>Computer Schwierigkeitsgrad</label>
-                <div class="btn-group" id="group-bot-level">
-                    <div class="btn-option active" data-value="easy">Anfänger</div>
-                    <div class="btn-option" data-value="medium">Medium</div>
-                    <div class="btn-option" data-value="strong">Strong</div>
-                    <div class="btn-option" data-value="insane">Insane</div>
+            <div class="grid-2">
+                <div class="card active" id="p1-card">
+                    <h3 id="p1-title">Spieler 1</h3>
+                    <div class="sub-info id-sub" id="p1-sub"></div>
+                    <div class="score-display" id="p1-score">501</div>
+                    <div class="sub-info" id="p1-legs-sets">Legs: 0 | Sets: 0</div>
+                    <div class="sub-info" id="p1-live-avg">Ø 0.0 (0 Darts)</div>
+                </div>
+                <div class="card hidden" id="p2-card">
+                    <h3 id="p2-title">Spieler 2</h3>
+                    <div class="score-display" id="p2-score">501</div>
+                    <div class="sub-info" id="p2-legs-sets">Legs: 0 | Sets: 0</div>
+                    <div class="sub-info" id="p2-live-avg">Ø 0.0 (0 Darts)</div>
+                </div>
+            </div>
+
+            <div class="error-banner" id="error-message"></div>
+
+            <div id="mic-button-wrapper"></div>
+
+            <div class="card" style="margin-top: 15px; padding: 15px;">
+                
+                <div id="segment-input-container">
+                    <div class="preview-row">
+                        <div class="preview-box active-slot" id="box-d1">Dart 1: -</div>
+                        <div class="preview-box" id="box-d2">Dart 2: -</div>
+                        <div class="preview-box" id="box-d3">Dart 3: -</div>
+                    </div>
+                    <div class="toggle-group" id="virtual-multiplier-row" style="justify-content: center; margin-bottom: 15px;">
+                        <button class="btn-option active" id="vmult-1" style="flex:1;">Single</button>
+                        <button class="btn-option" id="vmult-2" style="flex:1;">Double</button>
+                        <button class="btn-option" id="vmult-3" style="flex:1;">Triple</button>
+                    </div>
+                    <div class="keyboard-grid">
+                        <div class="numkey" data-val="20">20</div><div class="numkey" data-val="19">19</div><div class="numkey" data-val="18">18</div><div class="numkey" data-val="17">17</div>
+                        <div class="numkey" data-val="16">16</div><div class="numkey" data-val="15">15</div><div class="numkey" data-val="14">14</div><div class="numkey" data-val="13">13</div>
+                        <div class="numkey" data-val="12">12</div><div class="numkey" data-val="11">11</div><div class="numkey" data-val="10">10</div><div class="numkey" data-val="9">9</div>
+                        <div class="numkey" data-val="8">8</div><div class="numkey" data-val="7">7</div><div class="numkey" data-val="6">6</div><div class="numkey" data-val="5">5</div>
+                        <div class="numkey" data-val="4">4</div><div class="numkey" data-val="3">3</div><div class="numkey" data-val="2">2</div><div class="numkey" data-val="1">1</div>
+                        <div class="numkey" data-val="bull" style="background-color: rgba(255,152,0,0.15);">BULL</div>
+                        <div class="numkey" data-val="0">0 (Miss)</div>
+                        <div class="key" id="vkey-clear-segments" style="grid-column: span 2; background-color: rgba(244,67,54,0.15); color: var(--danger-color);">Löschen</div>
+                    </div>
+                </div>
+
+                <div id="set-input-container" class="hidden">
+                    <div class="sum-display-box" id="virtual-sum-display">0</div>
+                    <div class="keyboard-grid-sum">
+                        <div class="sumkey" data-num="1">1</div><div class="sumkey" data-num="2">2</div><div class="sumkey" data-num="3">3</div>
+                        <div class="key" id="vkey-clear-sum" style="background-color: rgba(244,67,54,0.15); color: var(--danger-color);">C</div>
+                        <div class="sumkey" data-num="4">4</div><div class="sumkey" data-num="5">5</div><div class="sumkey" data-num="6">6</div>
+                        <div class="key" style="visibility: hidden;"></div>
+                        <div class="sumkey" data-num="7">7</div><div class="sumkey" data-num="8">8</div><div class="sumkey" data-num="9">9</div>
+                        <div class="key" style="visibility: hidden;"></div>
+                        <div class="key" style="visibility: hidden;"></div><div class="sumkey" data-num="0">0</div>
+                        <div class="key" style="visibility: hidden;"></div>
+                        <div class="key" id="vkey-submit-sum" style="background-color: var(--accent-color); color:#121212;">OK</div>
+                    </div>
+                    <div class="keyboard-grid-shortcuts">
+                        <div class="shortcut" data-sum="26">26</div><div class="shortcut" data-sum="41">41</div><div class="shortcut" data-sum="45">45</div><div class="shortcut" data-sum="60">60</div><div class="shortcut" data-sum="81">81</div>
+                        <div class="shortcut" data-sum="85">85</div><div class="shortcut" data-sum="100">100</div><div class="shortcut" data-sum="121">121</div><div class="shortcut" data-sum="140">140</div><div class="shortcut" data-sum="180">180</div>
+                    </div>
+                </div>
+
+                <button id="submit-btn" class="btn btn-primary" style="width: 100%; padding: 14px; font-size: 16px; margin-top: 15px;">Aufnahme Bestätigen (Eingabetaste)</button>
+            </div>
+
+            <div class="grid-2" style="margin-top: 15px;">
+                <div class="card" style="padding: 15px;">
+                    <h4 id="h1-header">Verlauf S1</h4>
+                    <div class="history-box">
+                        <table>
+                            <thead><tr><th>Darts</th><th>Score</th><th>Rest</th><th>Details</th></tr></thead>
+                            <tbody id="p1-history-list"></tbody>
+                        </table>
+                    </div>
+                </div>
+                <div class="card id-history-box" id="p2-history-box" style="padding: 15px;">
+                    <h4 id="h2-header">Verlauf S2</h4>
+                    <div class="history-box">
+                        <table>
+                            <thead><tr><th>Darts</th><th>Score</th><th>Rest</th><th>Details</th></tr></thead>
+                            <tbody id="p2-history-list"></tbody>
+                        </table>
+                    </div>
                 </div>
             </div>
         </div>
 
-        <div id="options-x01">
-            <div class="form-group">
-                <label id="points-slider-label">Startpunkte: 501</label>
-                <input type="range" id="input-points-slider" min="101" max="501" step="100" value="501" style="width: 100%; accent-color: var(--accent-color);">
-            </div>
+        <div id="abschlussseite" class="hidden">
+            <div class="card" style="text-align: center; max-width: 600px; margin: 0 auto;">
+                <h2 style="color: var(--accent-color);" id="winner-announcement">Spieler 1 gewinnt!</h2>
+                <p style="color: var(--text-muted); margin-bottom: 20px;">Match beendet. Hier sind die Statistiken der Partie:</p>
+                
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Statistik</th>
+                            <th id="th-p1-name">Spieler 1</th>
+                            <th id="th-p2-name">Spieler 2</th>
+                        </tr>
+                    </thead>
+                    <tbody id="summary-stats-body"></tbody>
+                </table>
 
-            <div class="form-group" id="wrapper-legs-slider">
-                <label id="legs-slider-label">Legs pro Set: Best of 5 (First to 3)</label>
-                <input type="range" id="input-legs-slider" min="1" max="11" step="2" value="5" style="width: 100%; accent-color: var(--accent-color);">
-            </div>
-            
-            <div class="form-group" id="wrapper-sets-slider">
-                <label id="sets-slider-label">Sets zum Matchgewinn: Best of 1 (First to 1)</label>
-                <input type="range" id="input-sets-slider" min="1" max="13" step="2" value="1" style="width: 100%; accent-color: var(--accent-color);">
-            </div>
-
-            <div class="form-group">
-                <label>Eingabemodus</label>
-                <div class="btn-group" id="group-input-mode">
-                    <div class="btn-option active" data-value="segment">Darts einzeln</div>
-                    <div class="btn-option" data-value="set">Aufnahme (Summe)</div>
-                </div>
-            </div>
-            <div class="form-group">
-                <label>Out-Modus</label>
-                <div class="btn-group" id="group-out">
-                    <div class="btn-option active" data-value="double">Double Out</div>
-                    <div class="btn-option" data-value="single">Single Out</div>
-                </div>
+                <button id="btn-reset-game" class="btn btn-primary" style="width:100%; margin-top: 25px; padding: 12px;">Zurück zum Hauptmenü</button>
             </div>
         </div>
 
-        <div id="options-fin" class="hidden">
-            <div class="form-group">
-                <label>Finishing Typ</label>
-                <div class="btn-group" id="group-fin-type">
-                    <div class="btn-option active" data-value="realistic">Realistisch (3 Darts)</div>
-                    <div class="btn-option" data-value="strict">Exakt (Doppel-Darts)</div>
-                </div>
-            </div>
-            <div class="form-group" id="wrapper-fin-range">
-                <label>Bereich</label>
-                <div class="btn-group" id="group-fin-range">
-                    <div class="btn-option active" data-value="low">2 - 40</div>
-                    <div class="btn-option" data-value="mid">2 - 80</div>
-                    <div class="btn-option" data-value="high">2 - 170</div>
-                </div>
-            </div>
-        </div>
-
-        <div id="options-atc" class="hidden">
-            <div class="form-group">
-                <label>Bonus-Modus</label>
-                <div class="btn-group" id="group-atc-bonus">
-                    <div class="btn-option active" data-value="standard">Standard (+1 Feld)</div>
-                    <div class="btn-option" data-value="bonus">Doppel/Triple Bonus</div>
-                </div>
-            </div>
-        </div>
-
-        <div id="options-sod" class="hidden">
-            <div class="form-group">
-                <label>Zielsegment</label>
-                <select id="sod-target-select" style="margin-bottom: 10px;"></select>
-            </div>
-            <div class="form-group">
-                <label>Zielring</label>
-                <div class="btn-group" id="group-sod-ring">
-                    <div class="btn-option active" data-value="single">Single</div>
-                    <div class="btn-option" data-value="double">Double</div>
-                    <div class="btn-option" data-value="treble">Triple</div>
-                </div>
-            </div>
-            <div class="form-group">
-                <label>Pfeile Anzahl</label>
-                <div class="btn-group" id="group-sod-darts">
-                    <div class="btn-option active" data-value="15">15 Darts</div>
-                    <div class="btn-option" data-value="30">30 Darts</div>
-                    <div class="btn-option" data-value="45">45 Darts</div>
-                </div>
-            </div>
-        </div>
-
-        <button class="btn-main" id="btn-start-game" style="margin-top: 5px;">SPIEL STARTEN</button>
-        <button class="btn-main" id="btn-open-stats" style="margin-top: 10px; background:#222; border-color:#444;">📊 STATISTIKEN & HISTORIE</button>
     </div>
 
-    <div id="spielseite" class="card hidden">
-        <button class="settings-trigger btn-settings-open">⚙️</button>
-        <h2 id="game-title" style="text-align:center; color: var(--gold-text); margin-top:0; font-size: 20px;">501 Match</h2>
-        
-        <div class="game-layout">
-            <div class="player-card active" id="p1-card">
-                <h3 id="p1-title" style="margin:0; font-size: 16px;">Spieler 1</h3>
-                <div id="p1-sub" class="hidden" style="font-size:11px; opacity:0.6; margin-top: 2px;"></div>
-                <div class="score-display" id="p1-score">501</div>
-                <div class="legs-sets-display" id="p1-legs-sets">Legs: 0 | Sets: 0</div>
-                <div class="live-avg-display" id="p1-live-avg">Ø 0.0 (0 Darts)</div>
+    <div id="stats-modal" class="modal-overlay hidden">
+        <div class="modal-content">
+            <h3 style="margin-bottom: 15px; border-bottom: 1px solid var(--border-color); padding-bottom: 10px;">📊 Deine Alltime-Statistiken (X01)</h3>
+            <div style="display: flex; flex-direction: column; gap: 12px; margin-bottom: 20px;">
+                <div style="display:flex; justify-content:space-between;"><span>Spiele absolviert:</span><b id="stat-total-games">0</b></div>
+                <div style="display:flex; justify-content:space-between;"><span>Lebenslanger Average (Ø3):</span><b id="stat-alltime-avg">0.0</b></div>
+                <div style="display:flex; justify-content:space-between;"><span>Höchste Aufnahme:</span><b id="stat-highest-turn">0</b></div>
+                <div style="display:flex; justify-content:space-between;"><span>Höchstes Checkout:</span><b id="stat-highest-co">0</b></div>
+                <div style="display:flex; justify-content:space-between;"><span>Gesamtanzahl 180er:</span><b id="stat-total-180s">0</b></div>
             </div>
-            <div class="player-card hidden" id="p2-card">
-                <h3 id="p2-title" style="margin:0; font-size: 16px;">Spieler 2</h3>
-                <div class="score-display" id="p2-score">501</div>
-                <div class="legs-sets-display" id="p2-legs-sets">Legs: 0 | Sets: 0</div>
-                <div class="live-avg-display" id="p2-live-avg">Ø 0.0 (0 Darts)</div>
+            <div style="display:flex; gap:10px;">
+                <button class="btn" id="btn-clear-stats" style="border-color: var(--danger-color); color: var(--danger-color);">Statistiken zurücksetzen</button>
+                <button class="btn btn-primary" id="btn-stats-close" style="flex:1;">Schließen</button>
             </div>
         </div>
-
-        <div class="error-msg" id="error-message"></div>
-
-        <div id="segment-input-container">
-            <div class="dart-live-preview">
-                <div class="preview-box active-slot" id="box-d1">Dart 1: -</div>
-                <div class="preview-box" id="box-d2">Dart 2: -</div>
-                <div class="preview-box" id="box-d3">Dart 3: -</div>
-            </div>
-            
-            <div style="display: flex; gap: 6px; margin-bottom: 8px;">
-                <button class="btn-key modifier active" id="vmult-1" style="flex:1;">SINGLE</button>
-                <button class="btn-key modifier" id="vmult-2" style="flex:1;">DOUBLE (D)</button>
-                <button class="btn-key modifier" id="vmult-3" style="flex:1;">TRIPLE (T)</button>
-            </div>
-
-            <div class="keyboard-grid">
-                <button class="btn-key numkey" data-val="20">20</button>
-                <button class="btn-key numkey" data-val="19">19</button>
-                <button class="btn-key numkey" data-val="18">18</button>
-                <button class="btn-key numkey" data-val="17">17</button>
-                <button class="btn-key numkey" data-val="16">16</button>
-                
-                <button class="btn-key numkey" data-val="15">15</button>
-                <button class="btn-key numkey" data-val="14">14</button>
-                <button class="btn-key numkey" data-val="13">13</button>
-                <button class="btn-key numkey" data-val="12">12</button>
-                <button class="btn-key numkey" data-val="11">11</button>
-                
-                <button class="btn-key numkey" data-val="10">10</button>
-                <button class="btn-key numkey" data-val="9">9</button>
-                <button class="btn-key numkey" data-val="8">8</button>
-                <button class="btn-key numkey" data-val="7">7</button>
-                <button class="btn-key numkey" data-val="6">6</button>
-                
-                <button class="btn-key numkey" data-val="5">5</button>
-                <button class="btn-key numkey" data-val="4">4</button>
-                <button class="btn-key numkey" data-val="3">3</button>
-                <button class="btn-key numkey" data-val="2">2</button>
-                <button class="btn-key numkey" data-val="1">1</button>
-            </div>
-            
-            <div style="display:grid; grid-template-columns: 1fr 2fr 1fr; gap:6px; margin-top:6px;">
-                <button class="btn-key numkey" data-val="0" style="background:#3a3a3a;">💥 0</button>
-                <button class="btn-key numkey" data-val="bull" style="background:#0d2b1d; color:var(--gold-text);">🎯 BULL</button>
-                <button class="btn-key action-clear" id="vkey-clear-segments">⌫</button>
-            </div>
-        </div>
-
-        <div id="set-input-container" class="hidden">
-            <div class="sum-display-box" id="virtual-sum-display">0</div>
-            
-            <div class="keyboard-grid-shortcuts">
-                <button class="btn-key shortcut" data-sum="26">26</button>
-                <button class="btn-key shortcut" data-sum="41">41</button>
-                <button class="btn-key shortcut" data-sum="45">45</button>
-                <button class="btn-key shortcut" data-sum="60">60</button>
-                <button class="btn-key shortcut" data-sum="81">81</button>
-                <button class="btn-key shortcut" data-sum="85">85</button>
-                <button class="btn-key shortcut" data-sum="100">100</button>
-                <button class="btn-key shortcut" data-sum="121">121</button>
-                <button class="btn-key shortcut" data-sum="140">140</button>
-                <button class="btn-key shortcut" data-sum="180">180</button>
-            </div>
-
-            <div class="keyboard-grid-sum">
-                <button class="btn-key sumkey" data-num="1">1</button>
-                <button class="btn-key sumkey" data-num="2">2</button>
-                <button class="btn-key sumkey" data-num="3">3</button>
-                <button class="btn-key sumkey" data-num="4">4</button>
-                <button class="btn-key sumkey" data-num="5">5</button>
-                <button class="btn-key sumkey" data-num="6">6</button>
-                <button class="btn-key sumkey" data-num="7">7</button>
-                <button class="btn-key sumkey" data-num="8">8</button>
-                <button class="btn-key sumkey" data-num="9">9</button>
-                <button class="btn-key action-clear" id="vkey-clear-sum">⌫</button>
-                <button class="btn-key sumkey" data-num="0">0</button>
-                <button class="btn-key" id="vkey-submit-sum" style="background:#e50914; color:#fff;">✓</button>
-            </div>
-        </div>
-
-        <button class="btn-main" id="submit-btn" style="margin-top:15px; background:#e50914; border-color:#b3060f;">WURF BESTÄTIGEN</button>
-        <button class="btn-main btn-abort" id="btn-abort-game">Spiel abbrechen</button>
-
-        <div style="display:flex; gap:15px; margin-top:15px;">
-            <div style="flex:1;">
-                <h4 id="h1-header" style="margin:5px 0; opacity:0.6; font-size:13px;">Verlauf S1</h4>
-                <table class="history-table">
-                    <thead><tr><th>Darts</th><th>Score</th><th>Rest</th><th>Details</th></tr></thead>
-                    <tbody id="p1-history-list"></tbody>
-                </table>
-            </div>
-            <div style="flex:1;" id="p2-history-box" class="hidden">
-                <h4 id="h2-header" style="margin:5px 0; opacity:0.6; font-size:13px;">Verlauf S2</h4>
-                <table class="history-table">
-                    <thead><tr><th>Darts</th><th>Score</th><th>Rest</th><th>Details</th></tr></thead>
-                    <tbody id="p2-history-list"></tbody>
-                </table>
-            </div>
-        </div>
-    </div>
-
-    <div id="abschlussseite" class="card hidden" style="text-align:center;">
-        <h2 style="color: var(--gold-text); font-size: 26px; margin-bottom:5px;">🏆 MATCH BEENDET! 🏆</h2>
-        <h3 id="winner-announcement" style="margin:0 0 15px 0; color:#fff;">Spieler 1 gewinnt!</h3>
-        
-        <table class="stats-table">
-            <thead>
-                <tr>
-                    <th>Metrik</th>
-                    <th id="th-p1-name">Spieler 1</th>
-                    <th id="th-p2-name">Spieler 2</th>
-                </tr>
-            </thead>
-            <tbody id="summary-stats-body"></tbody>
-        </table>
-
-        <button class="btn-main" id="btn-reset-game" style="max-width: 300px; margin: 20px auto 0 auto;">Hauptmenü</button>
     </div>
 
     <div id="settings-modal" class="modal-overlay hidden">
         <div class="modal-content">
-            <button class="modal-close" id="btn-settings-close">✖</button>
-            <h3 style="margin-top:0; border-bottom: 1px solid var(--border-color); padding-bottom: 10px; color: var(--accent-color);">⚙️ Einstellungen</h3>
+            <h3 style="margin-bottom: 15px; border-bottom: 1px solid var(--border-color); padding-bottom: 10px;">⚙ Systemeinstellungen</h3>
             
             <div class="form-group">
-                <label>Design-Farbe</label>
-                <div class="btn-group" id="group-theme-select">
-                    <div class="btn-option active" data-value="dark">Dark Theme</div>
-                    <div class="btn-option" data-value="light">Light Theme</div>
+                <label>Theme</label>
+                <div class="toggle-group" id="group-theme-select">
+                    <button class="btn-option active" data-value="dark">Dark Mode</button>
+                    <button class="btn-option" data-value="light">Light Mode</button>
                 </div>
             </div>
 
             <div class="form-group">
                 <label>Sprachausgabe (Caller)</label>
-                <div class="btn-group" id="group-toggle-tts">
-                    <div class="btn-option active" data-value="true">Ja</div>
-                    <div class="btn-option" data-value="false">Nein</div>
+                <div class="toggle-group" id="group-toggle-tts">
+                    <button class="btn-option active" data-value="true">Ja, Scores ansagen</button>
+                    <button class="btn-option" data-value="false">Nein, stummschalten</button>
                 </div>
             </div>
 
             <div class="form-group">
-                <label>Zuschaltbarer Checkout Helper</label>
-                <div class="btn-group" id="group-toggle-helper">
-                    <div class="btn-option active" data-value="true">Aktiviert</div>
-                    <div class="btn-option" data-value="false">Deaktiviert</div>
+                <label>Spracherkennung (Mikrofon-Steuerung)</label>
+                <div class="toggle-group" id="group-toggle-stt">
+                    <button class="btn-option" data-value="true">An</button>
+                    <button class="btn-option active" data-value="false">Aus</button>
                 </div>
             </div>
 
-            <div id="sub-voice-settings">
+            <div id="sub-stt-settings" style="display: none; border-left: 3px solid var(--accent-color); padding-left: 10px; margin-bottom: 15px;">
                 <div class="form-group">
-                    <label for="voice-lang-select">Sprache:</label>
-                    <select id="voice-lang-select">
-                        <option value="de">Deutsch (DE)</option>
-                        <option value="en">English (EN)</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label for="voice-select">Stimme:</label>
-                    <select id="voice-select"><option value="">Wird geladen...</option></select>
+                    <label>Erkennungsmodus</label>
+                    <div class="toggle-group" id="group-stt-mode">
+                        <button class="btn-option active" data-value="continuous">Dauermodus (Hands-Free)</button>
+                        <button class="btn-option" data-value="tap">Tap-to-Talk (Manuell)</button>
+                    </div>
                 </div>
             </div>
+
+            <div class="form-group">
+                <label>Checkout-Helfer (Ansagen & Tipps)</label>
+                <div class="toggle-group" id="group-toggle-helper">
+                    <button class="btn-option active" data-value="true">Aktiviert</button>
+                    <button class="btn-option" data-value="false">Deaktiviert</button>
+                </div>
+            </div>
+
+            <div id="sub-voice-settings" style="border-left: 3px solid var(--accent-color); padding-left: 10px; margin-bottom: 15px;">
+                <div class="grid-2">
+                    <div class="form-group">
+                        <label>Sprachpaket</label>
+                        <select id="voice-lang-select" class="btn" style="width:100%; padding:9px;">
+                            <option value="de" selected>Deutsch</option>
+                            <option value="en">English</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Hardware Stimme</label>
+                        <select id="voice-select" class="btn" style="width:100%; padding:9px;"></select>
+                    </div>
+                </div>
+            </div>
+
+            <button class="btn btn-primary" id="btn-settings-close" style="width: 100%; margin-top: 10px; padding: 12px;">Einstellungen speichern</button>
         </div>
     </div>
 
-    <div id="stats-modal" class="modal-overlay hidden">
-        <div class="modal-content" style="max-width: 500px;">
-            <button class="modal-close" id="btn-stats-close">✖</button>
-            <h3 style="margin-top:0; border-bottom: 1px solid var(--border-color); padding-bottom: 10px; color: var(--gold-text);">📊 Allzeit Statistiken</h3>
-            
-            <table class="stats-table">
-                <tbody>
-                    <tr><td>Spiele absolviert</td><td id="stat-total-games">0</td></tr>
-                    <tr><td>Gesamt 3-Dart-Ø</td><td id="stat-alltime-avg">0.0</td></tr>
-                    <tr><td>Höchste Aufnahme</td><td id="stat-highest-turn">0</td></tr>
-                    <tr><td>Höchstes Checkout</td><td id="stat-highest-co">0</td></tr>
-                    <tr><td>Gesamte 180er</td><td id="stat-total-180s">0</td></tr>
-                </tbody>
-            </table>
-            
-            <button class="btn-main" id="btn-clear-stats" style="background:#555; border-color:#666; font-size:12px; padding:8px;">Statistiken zurücksetzen</button>
-        </div>
-    </div>
-
-</div>
-
-<script src="app.js"></script>
+    <script src="app.js"></script>
 </body>
 </html>

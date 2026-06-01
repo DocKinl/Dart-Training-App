@@ -39,9 +39,16 @@ let finAttempts = 0;
 let finTargetScore = 0;
 let finTypeSetting = 'realistic';
 
-// System-Optionen
+// System-Optionen (Audio)
 let isSpeechOutputActive = true;
+let isSpeechInputActive = false; // Neuer STT-Schalter
+let speechInputMode = 'continuous'; // 'continuous' (Dauermodus) oder 'tap' (Tap-to-Talk)
+let isVoiceMuted = false; // Für Dauermodus Mute-Status
 let currentTheme = 'dark';
+
+// Spracherkennungs-Instanz (Web Speech API)
+let recognition = null;
+let isListening = false;
 
 const invalidFinishes = [169, 168, 166, 165, 163, 162, 159];
 const impossibleScores = [179, 178, 176, 175, 173, 172, 169, 166, 163, 162, 159];
@@ -79,6 +86,8 @@ function safeInit() {
     initEventListeners();
     initVoices();
     initSliderLabels();
+    initSpeechRecognition();
+    renderMicButton(); // Initialisiert den Mic-Button auf der Spielseite
 }
 
 if (document.readyState === 'loading') {
@@ -196,6 +205,24 @@ function initEventListeners() {
         if (subMenu) subMenu.style.display = isSpeechOutputActive ? 'block' : 'none';
     });
 
+    // Neue STT Event Listener für die Einstellungen
+    setupGroupListeners('group-toggle-stt', (val, btn) => {
+        selectOption('group-toggle-stt', btn);
+        isSpeechInputActive = (val === 'true');
+        const subMenu = document.getElementById('sub-stt-settings');
+        if (subMenu) subMenu.style.display = isSpeechInputActive ? 'block' : 'none';
+        renderMicButton();
+        if(!isSpeechInputActive) stopListening();
+    });
+
+    setupGroupListeners('group-stt-mode', (val, btn) => {
+        selectOption('group-stt-mode', btn);
+        speechInputMode = val;
+        isVoiceMuted = false;
+        renderMicButton();
+        stopListening();
+    });
+
     setupGroupListeners('group-toggle-helper', (val, btn) => {
         selectOption('group-toggle-helper', btn);
         isCheckoutHelperActive = (val === 'true');
@@ -240,7 +267,12 @@ function initEventListeners() {
     }
 
     setupGroupListeners('group-bot-level', (val, btn) => selectOption('group-bot-level', btn));
-    setupGroupListeners('group-input-mode', (val, btn) => selectOption('group-input-mode', btn));
+    setupGroupListeners('group-input-mode', (val, btn) => {
+        selectOption('group-input-mode', btn);
+        // Setzt Mute zurück, um Verwirrung beim Moduswechsel zu vermeiden
+        isVoiceMuted = false;
+        renderMicButton();
+    });
     setupGroupListeners('group-out', (val, btn) => selectOption('group-out', btn));
     setupGroupListeners('group-fin-type', (val, btn) => changeFinishingType(val, btn));
     setupGroupListeners('group-fin-range', (val, btn) => selectOption('group-fin-range', btn));
@@ -419,12 +451,20 @@ function speak(text, onEndCallback) {
         if (onEndCallback) onEndCallback();
         return;
     }
+    // Verhindert, dass das STT-System seine eigene Sprachausgabe hört
+    stopListening();
+
     let utterance = new SpeechSynthesisUtterance(text);
     utterance.lang = currentLanguageCode;
     if (selectedVoice) utterance.voice = selectedVoice;
-    if (onEndCallback) {
-        utterance.onend = () => onEndCallback();
-    }
+    
+    utterance.onend = () => {
+        if (onEndCallback) onEndCallback();
+        // Aktiviert STT wieder vollautomatisch nach der Ansage, falls Dauermodus aktiv und nicht stummgeschaltet
+        if (isSpeechInputActive && speechInputMode === 'continuous' && !isVoiceMuted && !isLockingInput) {
+            startListening();
+        }
+    };
     window.speechSynthesis.speak(utterance);
 }
 
@@ -433,7 +473,9 @@ function speakTurnResult(score, rest, onEndCallback) {
         if (onEndCallback) onEndCallback();
         return;
     }
+    stopListening();
     window.speechSynthesis.cancel();
+    
     let scoreUtterance = new SpeechSynthesisUtterance(score.toString());
     scoreUtterance.lang = currentLanguageCode;
     if (selectedVoice) scoreUtterance.voice = selectedVoice;
@@ -447,10 +489,16 @@ function speakTurnResult(score, rest, onEndCallback) {
             
             restUtterance.onend = () => {
                 if (onEndCallback) onEndCallback();
+                if (isSpeechInputActive && speechInputMode === 'continuous' && !isVoiceMuted && !isLockingInput) {
+                    startListening();
+                }
             };
             window.speechSynthesis.speak(restUtterance);
         } else {
             if (onEndCallback) onEndCallback();
+            if (isSpeechInputActive && speechInputMode === 'continuous' && !isVoiceMuted && !isLockingInput) {
+                startListening();
+            }
         }
     };
     window.speechSynthesis.speak(scoreUtterance);
@@ -463,12 +511,19 @@ function triggerCheckoutHelperVoice(score) {
     else if (score <= 40 && score % 2 === 0) route = ["D" + (score/2)];
     
     if (route) {
+        stopListening();
         let text = currentLanguageCode.startsWith('en') ? `Target ${score}. Try ` : `${score} Rest. Versuche `;
         let elements = route.map(r => r.replace('T', 'Triple ').replace('D', 'Doppel ').replace('S', 'Single '));
         text += elements.join(', ');
         let utterance = new SpeechSynthesisUtterance(text);
         utterance.lang = currentLanguageCode;
         if(selectedVoice) utterance.voice = selectedVoice;
+        
+        utterance.onend = () => {
+            if (isSpeechInputActive && speechInputMode === 'continuous' && !isVoiceMuted && !isLockingInput) {
+                startListening();
+            }
+        };
         setTimeout(() => window.speechSynthesis.speak(utterance), 1200);
     }
 }
@@ -534,6 +589,226 @@ function calculateLiveTurnCheckout() {
             text += elements.join(', ');
             speak(text);
         }
+    }
+}
+
+// ==========================================
+// NEW: SPEECH RECOGNITION (STT) SCHALTZENTRALE
+// ==========================================
+function initSpeechRecognition() {
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+        console.log("Web Speech API wird von diesem Browser nicht unterstützt.");
+        return;
+    }
+    recognition = new SpeechRecognition();
+    recognition.continuous = false; // Wir handhaben den Loop pro Aufnahme selbst
+    recognition.interimResults = false;
+    recognition.maxAlternatives = 1;
+
+    recognition.onstart = () => {
+        isListening = true;
+        updateMicButtonUI(true);
+    };
+
+    recognition.onend = () => {
+        isListening = false;
+        updateMicButtonUI(false);
+    };
+
+    recognition.onerror = (event) => {
+        console.log("STT Error: ", event.error);
+        isListening = false;
+        updateMicButtonUI(false);
+    };
+
+    recognition.onresult = (event) => {
+        const transcript = event.results[0][0].transcript.toLowerCase().trim();
+        console.log("Erkannte Sprache: ", transcript);
+        parseSpeechInput(transcript);
+    };
+}
+
+function startListening() {
+    if (!recognition || isListening || isLockingInput) return;
+    recognition.lang = currentLanguageCode;
+    try {
+        recognition.start();
+    } catch(e) { console.log(e); }
+}
+
+function stopListening() {
+    if (!recognition || !isListening) return;
+    try {
+        recognition.stop();
+    } catch(e) { console.log(e); }
+}
+
+// Das "Wörterbuch" und Sprach-Parsing System
+function parseSpeechInput(text) {
+    document.getElementById('error-message').innerText = "";
+    
+    // 1. Variante: Exakte Restscore-Ansage (Nur sinnvoll im Summen-Modus 'set')
+    if (inputMode === 'set' && (text.includes("rest") || text.startsWith("rest"))) {
+        let cleanText = text.replace("rest", "").trim();
+        let parsedRest = parseInt(cleanText);
+        if (!isNaN(parsedRest) && parsedRest >= 0 && parsedRest <= initialPoints) {
+            let actualScoredSum = scores[activePlayer] - parsedRest;
+            if (actualScoredSum >= 0 && actualScoredSum <= 180) {
+                setVirtualSum(actualScoredSum);
+                submitScore();
+                return;
+            }
+        }
+        document.getElementById('error-message').innerText = "Restscore nicht plausibel!";
+        return;
+    }
+
+    // 2. Variante: Summen-Modus (Reine Zahl oder Zahlwörter)
+    if (inputMode === 'set') {
+        let parsedNum = textToNumber(text);
+        if (parsedNum !== null && parsedNum <= 180) {
+            setVirtualSum(parsedNum);
+            submitScore();
+            return;
+        }
+        document.getElementById('error-message').innerText = "Kombination nicht verstanden.";
+        return;
+    }
+
+    // 3. Variante: Einzelpfeile (Segment-Modus)
+    // Erlaubt Trennungen durch "und", Komma oder Leerzeichen
+    let tokens = text.split(/[\s,und]+/).filter(t => t.length > 0);
+    let currentDartSlotToFill = 1;
+    resetVirtualState();
+
+    for (let i = 0; i < tokens.length; i++) {
+        if (currentDartSlotToFill > 3) break;
+        let token = tokens[i];
+        let multiplier = 1;
+
+        if (token === "triple" || token === "tripel" || token === "treble") {
+            multiplier = 3; i++; token = tokens[i];
+        } else if (token === "doppel" || token === "double") {
+            multiplier = 2; i++; token = tokens[i];
+        } else if (token === "single") {
+            multiplier = 1; i++; token = tokens[i];
+        }
+
+        if (!token) break;
+
+        let val = 0; let field = "";
+        if (token === "bullseye" || token === "bull" || token === "bull's") {
+            field = "bull";
+            // Bei Bullseye automatisch Doppel-Multiplikator setzen falls angesagt
+            if(token === "bullseye") multiplier = 2; 
+        } else if (token === "0" || token === "null" || token === "miss" || token === "vorbei") {
+            field = "0"; multiplier = 1;
+        } else {
+            let num = parseInt(token);
+            if (isNaN(num)) num = wordToNumberClean(token);
+            if (num >= 1 && num <= 20) {
+                field = num.toString();
+            } else {
+                continue; // Unbekanntes Token überspringen
+            }
+        }
+
+        let parsed = parseSegmentData(field, multiplier);
+        if (parsed) {
+            virtualDartData[currentDartSlotToFill] = {
+                val: parsed.val, label: parsed.label, rawField: field, m: multiplier, key: parsed.key
+            };
+            currentDartSlotToFill++;
+        }
+    }
+
+    updateDartPreviewDOM();
+    
+    // Nach erfolgreichem Parsing der Segmente prüfen wir direkt auf Busts oder verarbeiten den Turn
+    if (virtualDartData[1].label !== "-") {
+        // Simuliert die Eingaben sequentiell für den Bust-Check
+        if (checkLiveBustSegment(1)) return;
+        if (virtualDartData[2].label !== "-" && checkLiveBustSegment(2)) return;
+        if (virtualDartData[3].label !== "-" && checkLiveBustSegment(3)) return;
+        
+        submitScore();
+    } else {
+        document.getElementById('error-message').innerText = "Darts nicht sauber erkannt.";
+    }
+}
+
+// Hilfsfunktion zur Umwandlung von Textzahlen in Integer
+function textToNumber(text) {
+    let n = parseInt(text);
+    if (!isNaN(n)) return n;
+    return wordToNumberClean(text);
+}
+
+function wordToNumberClean(word) {
+    const dict = {
+        "null": 0, "eins": 1, "zwei": 2, "drei": 3, "vier": 4, "fünf": 5, "sechs": 6, "sieben": 7, "acht": 8, "neun": 9, "zehn": 10,
+        "elf": 11, "zwölf": 12, "dreizehn": 13, "vierzehn": 14, "fünfzehn": 15, "sechzehn": 16, "siebzehn": 17, "achtzehn": 18, "neunzehn": 19, "zwanzig": 20,
+        "einundzwanzig": 21, "26": 26, "dreißig": 30, "vierzig": 40, "fünfzig": 50, "sechzig": 60, "einundsechzig": 61, "zweiundsechzig": 62, "dreiundsechzig": 63,
+        "vierundsechzig": 64, "fünfundsechzig": 65, "fünfundachtzig": 85, "einhundert": 100, "hundert": 100, "hunderteins": 101, "hundertvierzig": 140, "hundertachtzig": 180
+    };
+    return dict[word] !== undefined ? dict[word] : null;
+}
+
+// Erstellt oder updatet den Mic-Button dynamisch auf der Spielseite
+function renderMicButton() {
+    let micWrapper = document.getElementById('mic-button-wrapper');
+    if (!micWrapper) return; // Falls DOM-Element noch nicht existiert
+
+    if (!isSpeechInputActive) {
+        micWrapper.innerHTML = "";
+        return;
+    }
+
+    // Erstellt das Element falls leer
+    micWrapper.innerHTML = `
+        <button id="btn-mic-action" class="btn-action-mic">
+            <span id="mic-icon-container"></span>
+        </button>
+    `;
+
+    document.getElementById('btn-mic-action').onclick = function() {
+        if (speechInputMode === 'continuous') {
+            // Im Dauermodus toggelt der Klick die Stummschaltung
+            isVoiceMuted = !isVoiceMuted;
+            if (isVoiceMuted) stopListening();
+            else startListening();
+            updateMicButtonUI(isListening);
+        } else {
+            // Im Tap-to-Talk Modus startet ein Klick die Aufnahme manuell
+            if (isListening) stopListening();
+            else startListening();
+        }
+    };
+    updateMicButtonUI(isListening);
+}
+
+function updateMicButtonUI(activeListening) {
+    const iconContainer = document.getElementById('mic-icon-container');
+    const btn = document.getElementById('btn-mic-action');
+    if (!iconContainer || !btn) return;
+
+    // SVG Icons
+    const normalMicSVG = `<svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="2" fill="none"><path d="M12 1v11M19 10v1a7 7 0 0 1-14 0v-1M12 23v-4"></path><rect x="9" y="5" width="6" height="10" rx="3"></rect></svg>`;
+    const mutedMicSVG = `<svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="2" fill="none"><line x1="1" y1="1" x2="23" y2="23"></line><path d="M9 9v3a3 3 0 0 0 5.12 2.12M15 9.34V5a3 3 0 0 0-5.94-.6"></path><path d="M19 10v1a6.93 6.93 0 0 1-1 3.58M5 10v1a7 7 0 0 0 10.74 5.82"></path><line x1="12" y1="19" x2="12" y2="23"></line></svg>`;
+
+    if (speechInputMode === 'continuous') {
+        if (isVoiceMuted) {
+            iconContainer.innerHTML = mutedMicSVG;
+            btn.className = "btn-action-mic mic-muted";
+        } else {
+            iconContainer.innerHTML = normalMicSVG;
+            btn.className = activeListening ? "btn-action-mic mic-listening" : "btn-action-mic mic-active-continuous";
+        }
+    } else {
+        // Tap to Talk Modus
+        iconContainer.innerHTML = normalMicSVG;
+        btn.className = activeListening ? "btn-action-mic mic-listening" : "btn-action-mic";
     }
 }
 
@@ -632,7 +907,9 @@ function startGame() {
     }
 
     histories[1] = []; histories[2] = []; activePlayer = 1; isLockingInput = false;
+    isVoiceMuted = false; // Setzt Mute bei Spielstart standardmäßig zurück
     updateScoreboardDisplays();
+    renderMicButton(); // Mic-Button laden
 
     document.getElementById('p1-history-list').innerHTML = "";
     document.getElementById('p2-history-list').innerHTML = "";
@@ -674,6 +951,7 @@ function updateScoreboardDisplays() {
 
 function abortGame() {
     if (confirm("Spiel wirklich abbrechen?")) {
+        stopListening();
         document.getElementById('spielseite').classList.add('hidden');
         document.getElementById('startseite').classList.remove('hidden');
     }
@@ -790,7 +1068,11 @@ function executeX01Turn() {
         let remaining = currentScore - totalScore;
         
         if (remaining < 0 || (remaining === 1 && outMode === 'double') || (remaining === 0 && outMode === 'double' && totalScore < 2)) {
-            let inputDarts = prompt("Überworfen! Wie viele Darts wurden in dieser Aufnahme geworfen? (1, 2 oder 3)", "3");
+            let inputDarts = "3";
+            // Nur fragen, wenn nicht gerade über Spracheingabe ein sauberer Prozess läuft
+            if (!isListening) {
+                inputDarts = prompt("Überworfen! Wie viele Darts wurden in dieser Aufnahme geworfen? (1, 2 oder 3)", "3");
+            }
             let parsedDarts = parseInt(inputDarts);
             if (parsedDarts !== 1 && parsedDarts !== 2 && parsedDarts !== 3) parsedDarts = 3;
             
@@ -799,7 +1081,10 @@ function executeX01Turn() {
         }
         
         if (remaining === 0) {
-            let inputDarts = prompt("Match/Leg beendet! Wie viele Darts wurden für das Finish benötigt? (1, 2 oder 3)", "3");
+            let inputDarts = "3";
+            if (!isListening) {
+                inputDarts = prompt("Match/Leg beendet! Wie viele Darts wurden für das Finish benötigt? (1, 2 oder 3)", "3");
+            }
             let parsedDarts = parseInt(inputDarts);
             if (parsedDarts !== 1 && parsedDarts !== 2 && parsedDarts !== 3) parsedDarts = 3;
             dartsCountThisTurn = parsedDarts;
@@ -1132,6 +1417,7 @@ function addHistoryEntry(player, score, rest, details, isBust) {
 }
 
 function showVictory(winnerId) {
+    stopListening();
     document.getElementById('spielseite').classList.add('hidden');
     document.getElementById('abschlussseite').classList.remove('hidden');
     
